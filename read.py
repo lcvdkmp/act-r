@@ -11,7 +11,7 @@ class Model:
 
         actr.chunktype("word", "form")
 
-        self.lexicon = list(map(str, range(60)))
+        self.lexicon = list(map(str, range(80)))
         for w in self.lexicon:
             self.model.decmem.add(actr.makechunk(typename="word", form=w))
 
@@ -19,21 +19,13 @@ class Model:
         self.model.goal.add(actr.makechunk(nameofchunk="start",
                                            typename="goal", state="start"))
 
-        # Note finst=50. This determines how long the memory is about what
-        # objects were atteded to.
+        # Note finst=float("inf"). This determines how long the memory is about
+        # what objects were atteded to. We assume the subject can remember he
+        # attended all objects he atteded to
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
-                                finst=50)
+                                finst=float("inf"))
 
         # Find a word on the screen
-        # TODO: currently the left-to-right reading depends heavily on atteded.
-        # If a very long string of text is presented to the model, it will,
-        # after a while, start reading the first word again. This is due to the
-        # fact that finst in finite and therefore the memory of attended words
-        # is finite as well. (Note that the model will search for words closest
-        # to (0, 0) that are not yet attended with x precedence)
-        #
-        # A better model would be to restrict the newline search from searching
-        # for above the current line.
         self.model.productionstring(name="find word", string="""
             =g>
             isa goal
@@ -144,7 +136,8 @@ class Model:
         while True:
             sim.step()
             if sim.current_event.action.startswith("RETRIEVED:"):
-                print(sim.current_event.action)
+                print("{}: {}".format(sim.current_event.time,
+                                      sim.current_event.action))
 
 
 if __name__ == "__main__":
