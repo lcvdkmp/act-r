@@ -19,9 +19,6 @@ class Model:
         self.model.goal.add(actr.makechunk(nameofchunk="start",
                                            typename="goal", state="start"))
 
-        # Note finst=float("inf"). This determines how long the memory is about
-        # what objects were atteded to. We assume the subject can remember he
-        # attended all objects he atteded to
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
                                 finst=float("inf"))
 
@@ -61,6 +58,7 @@ class Model:
             ~visual_location>
         """)
 
+        # Dummy recall.
         self.model.productionstring(name="recalling", string="""
             =g>
             isa goal
@@ -124,6 +122,7 @@ class Model:
 
     def run(self):
         s = " ".join(self.lexicon)
+        # The simulation requires a dictionary for some reason...
         w = dict(enumerate(self.sentence_to_env(s)))
         sim = self.model.simulation(
             realtime=True,
@@ -133,11 +132,12 @@ class Model:
             triggers='',
             times=1)
 
-        while True:
-            sim.step()
-            if sim.current_event.action.startswith("RETRIEVED:"):
-                print("{}: {}".format(sim.current_event.time,
-                                      sim.current_event.action))
+        # while True:
+        #     sim.step()
+        #     if sim.current_event.action.startswith("RETRIEVED:"):
+        #         print("{}: {}".format(sim.current_event.time,
+        #                               sim.current_event.action))
+        sim.run()
 
 
 if __name__ == "__main__":
