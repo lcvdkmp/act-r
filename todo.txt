@@ -1,0 +1,6 @@
+Do the dashed line thing maybe
+Store all words in sentence?
+Explicitly store subject.
+Do recall on "hij" or "zij":
+	Find subject or object with matching gender and that has been seen before in
+	the sentence.
