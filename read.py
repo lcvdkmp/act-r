@@ -185,8 +185,9 @@ class Model:
     def sentence_to_env(self, s):
         wl = s.split(' ')
 
-        return [{p: self.env_word(wl, p), p+1: self.env_dash(p+1)}
-                for p in range(len(wl))]
+        return ([{p: self.env_word(wl, p), p+1: self.env_dash(p+1)}
+                for p in range(len(wl) - 1)] +
+                [{len(wl)-1: self.env_word(wl, len(wl)-1)}])
 
     def sentence_to_env2(self, s):
         wl = s.split(' ')
