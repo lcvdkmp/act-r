@@ -5,20 +5,41 @@ class Model:
     def __init__(self, gui=True):
         self.gui = gui
         # Left-to-right reading. Start at (0, 0)
+
         self.environment = actr.Environment(focus_position=(0, 0))
 
         self.model = actr.ACTRModel(environment=self.environment,
                                     automatic_visual_search=False)
 
-        actr.chunktype("word", "form")
+        self.lexicon = ["de", "besprak", "met", "het", "onderzoeksvoorstel",
+                        "die", "periode", "geen", "nieuwe",
+                        "resultaten", "van", "periode", "een"]
 
-        self.lexicon = list(map(str, range(80)))
+        self.nouns = [("professor", "masc"), ("vriend", "fem")]
+
+        self.object_indicators = ["enkele"]
+
+        actr.chunktype("word", "form, object_indicator")
+        actr.chunktype("noun", "form, gender")
+
         for w in self.lexicon:
-            self.model.decmem.add(actr.makechunk(typename="word", form=w))
+            self.model.decmem.add(actr.makechunk(typename="word",
+                                                 nameofchunk=w, form=w))
 
-        actr.chunktype("goal", "state")
+        for w in self.object_indicators:
+            self.model.decmem.add(actr.makechunk(typename="word",
+                                                 nameofchunk=w, form=w,
+                                                 object_indicator=True))
+
+        for (n, g) in self.nouns:
+            self.model.decmem.add(actr.makechunk(typename="noun",
+                                                 nameofchunk=n, form=n,
+                                                 gender=g))
+
+        actr.chunktype("goal", "state, expecting_subject")
         self.model.goal.add(actr.makechunk(nameofchunk="start",
-                                           typename="goal", state="start"))
+                                           typename="goal", state="start",
+                                           expecting_subject=False))
 
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
                                 # finst=float("inf"))
@@ -61,10 +82,10 @@ class Model:
             ~visual_location>
         """)
 
-        self.dummy_parse()
+        self.add_parse_rules()
 
     # encoding -> encoding_done
-    def dummy_parse(self):
+    def add_parse_rules(self):
         # Dummy recall.
         self.model.productionstring(name="waiting for word", string="""
             =g>
@@ -105,6 +126,9 @@ class Model:
         # value of the visual buffer will be set to None.
         # We have to make sure we try to find a new word when this happens
         # to find a new word.
+        #
+        # But it would be more natural for the value to just become the word
+        # that was originally at the place of the dashes.
         self.model.productionstring(name="recover from lost word", string="""
             =g>
             isa goal
@@ -140,7 +164,7 @@ class Model:
         self.model.productionstring(name="no lexeme found", string="""
             =g>
             isa goal
-            state 'endoding_done'
+            state 'encoding_done'
             ?retrieval>
             state error
             ==>
@@ -151,6 +175,11 @@ class Model:
 
     # encoding -> encoding_done
     def parse(self):
+        # self.model.productionstring(name="parse word", string"""
+        #     =g>
+        #     isa goal
+        #     state 'encoding'
+
         pass
 
     def sentence_to_env(self, s):
@@ -196,7 +225,8 @@ class Model:
         return {'text': '___', 'position': self.env_pos(p)}
 
     def sim(self):
-        s = " ".join(self.lexicon)
+        s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
+             " die periode")
         # The simulation requires a dictionary for some reason...
         # w = dict(enumerate(self.sentence_to_env(s)))
         # print(w)
