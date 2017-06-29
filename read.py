@@ -36,10 +36,13 @@ class Model:
                                                  nameofchunk=n, form=n,
                                                  gender=g))
 
-        actr.chunktype("goal", "state, expecting_subject")
+        actr.chunktype("goal", ("state, expecting_object,"
+                                "first_word_attended, subject_attended"))
         self.model.goal.add(actr.makechunk(nameofchunk="start",
                                            typename="goal", state="start",
-                                           expecting_subject=False))
+                                           expecting_object=False,
+                                           first_word_attended=False,
+                                           subject_attended=False))
 
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
                                 # finst=float("inf"))
@@ -100,10 +103,92 @@ class Model:
             state 'start'
         """)
 
+        # Recall the first word.
+        # This is a special case because we want this to set the
+        # first_word_attended and we don't want this rule to fire when a
+        # subject is expected.
+        self.model.productionstring(name="recalling (first word)", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            expecting_object ~True
+            first_word_attended False
+            ?visual>
+            buffer full
+            =visual>
+            isa _visual
+            value =val
+            value ~"___"
+            value ~None
+            ==>
+            =g>
+            isa goal
+            state 'encoding_done'
+            first_word_attended True
+            +retrieval>
+            isa word
+            form =val
+        """)
+
+        # Recall an object. An object is expected because an object indicator
+        # has just been read.
+        self.model.productionstring(name="recalling (object expected)", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            expecting_object True
+            ?visual>
+            buffer full
+            =visual>
+            isa _visual
+            value =val
+            value ~"___"
+            value ~None
+            ==>
+            =g>
+            isa goal
+            state 'encoding_done'
+            expecting_object False
+            +retrieval>
+            isa noun
+            form =val
+        """)
+
+        # Recall a subject. A subject is expected because the first word has
+        # been read and no subject has yet to be attended.
+        # (we assume that the subject is alsways the second word of a sentence)
+        self.model.productionstring(name="recalling (subject expected)", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            first_word_attended True
+            subject_attended False
+            ?visual>
+            buffer full
+            =visual>
+            isa _visual
+            value =val
+            value ~"___"
+            value ~None
+            ==>
+            =g>
+            isa goal
+            state 'encoding_done'
+            subject_attended True
+            +retrieval>
+            isa noun
+            form =val
+        """)
+
+        # A normal word recall which should be fired if no other recall can be
+        # fired.
         self.model.productionstring(name="recalling", string="""
             =g>
             isa goal
             state 'encoding'
+            expecting_object ~True
+            subject_attended True
+            first_word_attended True
             ?visual>
             buffer full
             =visual>
@@ -151,10 +236,34 @@ class Model:
             ?retrieval>
             buffer full
             state free
+            =retrieval>
+            isa word
+            object_indicator ~True
             ==>
             =g>
             isa goal
             state 'start'
+            +manual>
+            isa _manual
+            cmd press_key
+            key 'space'
+        """)
+
+        self.model.productionstring(name="lexeme retrieved (object indicator)", string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa word
+            object_indicator True
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            expecting_object True
             +manual>
             isa _manual
             cmd press_key
@@ -257,9 +366,22 @@ if __name__ == "__main__":
                         action="store_true")
     parser.add_argument("-g", "--gui", help="Run with a gui",
                         action="store_true")
+
+    parser.add_argument("-f", "--filters", nargs="+",
+                        help=("Filter the output of the simulation. Specify "
+                              "one or more strings as filters. A step of the "
+                              "simulation is only printed when it contains "
+                              "such string"))
     args = parser.parse_args()
 
     m = Model(gui=args.gui)
     sim = m.sim()
-    if not args.dry_run:
+    if not args.dry_run and not args.filters:
         sim.run()
+    elif args.filters:
+        while True:
+            sim.step()
+            if True in map(lambda x: x in sim.current_event.action,
+                           args.filters):
+                print("{}: {}".format(sim.current_event.time,
+                                      sim.current_event.action))
