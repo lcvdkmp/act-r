@@ -266,10 +266,13 @@ class Model:
             key 'space'
         """)
 
+        # Retrieve a noun without trying to recall a reference to a previous
+        # sentence (no sentence read before)
         self.model.productionstring(name="lexeme retrieved (noun)", string="""
             =g>
             isa goal
             state 'encoding_done'
+            in_second_sentence ~True
             ?retrieval>
             buffer full
             state free
@@ -284,6 +287,29 @@ class Model:
             isa _manual
             cmd press_key
             key 'space'
+        """)
+
+        self.model.productionstring(name=("lexeme retrieved (noun):"
+                                          " start reference retrieval"),
+                                    string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            in_second_sentence True
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa noun
+            cat noun
+            gender =g
+            ==>
+            =g>
+            isa goal
+            state 'retrieving_reference'
+            +retrieval>
+            isa noun
+            attended True
         """)
 
         self.model.productionstring(name="lexeme retrieved (terminator)", string="""
@@ -340,14 +366,40 @@ class Model:
             state 'start'
         """)
 
-    # encoding -> encoding_done
-    def parse(self):
-        # self.model.productionstring(name="parse word", string"""
-        #     =g>
-        #     isa goal
-        #     state 'encoding'
+        self.model.productionstring(name="reference retrieved",
+                                    string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            in_second_sentence True
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa word
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            +manual>
+            isa _manual
+            cmd press_key
+            key 'space'
+        """)
 
-        pass
+        self.model.productionstring(name="no reference retrieved:",
+                                    string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            in_second_sentence True
+            ?retrieval>
+            state error
+            ==>
+            =g>
+            isa goal
+            state 'start'
+        """)
 
     def sentence_to_env(self, s):
         wl = s.split(' ')
