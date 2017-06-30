@@ -19,30 +19,43 @@ class Model:
 
         self.object_indicators = ["enkele"]
 
-        actr.chunktype("word", "form, object_indicator")
-        actr.chunktype("noun", "form, gender")
+        self.back_reference_objects = [("hij", "masc"), ("zij", "fem")]
+
+        self.sentence_terminators = ["."]
+
+        actr.chunktype("word", "form, cat")
+        actr.chunktype("noun", "form, cat, gender")
+
+        for w in self.sentence_terminators:
+            self.model.decmem.add(actr.makechunk(typename="word",
+                                                 nameofchunk=w, form=w,
+                                                 cat="terminator"))
 
         for w in self.lexicon:
             self.model.decmem.add(actr.makechunk(typename="word",
-                                                 nameofchunk=w, form=w))
+                                                 nameofchunk=w, form=w,
+                                                 cat="word"))
 
         for w in self.object_indicators:
             self.model.decmem.add(actr.makechunk(typename="word",
                                                  nameofchunk=w, form=w,
-                                                 object_indicator=True))
+                                                 cat="object_indicator",
+                                                 ))
 
-        for (n, g) in self.nouns:
+        for (n, g) in self.nouns + self.back_reference_objects:
             self.model.decmem.add(actr.makechunk(typename="noun",
                                                  nameofchunk=n, form=n,
-                                                 gender=g))
+                                                 cat="noun", gender=g))
 
         actr.chunktype("goal", ("state, expecting_object,"
-                                "first_word_attended, subject_attended"))
+                                "first_word_attended, subject_attended,"
+                                "in_second_sentence"))
         self.model.goal.add(actr.makechunk(nameofchunk="start",
                                            typename="goal", state="start",
                                            expecting_object=False,
                                            first_word_attended=False,
-                                           subject_attended=False))
+                                           subject_attended=False,
+                                           in_second_sentence=False))
 
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
                                 # finst=float("inf"))
@@ -180,7 +193,7 @@ class Model:
             form =val
         """)
 
-        # A normal word recall which should be fired if no other recall can be
+        # A normal word recall that should be fired if no other recall can be
         # fired.
         self.model.productionstring(name="recalling", string="""
             =g>
@@ -229,6 +242,8 @@ class Model:
             state 'start'
         """)
 
+        # TODO: could replace the cat ~ stuf with cat word if word is the only
+        # thing we are  catching here in the end
         self.model.productionstring(name="lexeme retrieved", string="""
             =g>
             isa goal
@@ -238,11 +253,54 @@ class Model:
             state free
             =retrieval>
             isa word
-            object_indicator ~True
+            cat ~noun
+            cat ~terminator
+            cat ~object_indicator
             ==>
             =g>
             isa goal
             state 'start'
+            +manual>
+            isa _manual
+            cmd press_key
+            key 'space'
+        """)
+
+        self.model.productionstring(name="lexeme retrieved (noun)", string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa noun
+            cat noun
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            +manual>
+            isa _manual
+            cmd press_key
+            key 'space'
+        """)
+
+        self.model.productionstring(name="lexeme retrieved (terminator)", string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa word
+            cat terminator
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            in_second_sentence True
             +manual>
             isa _manual
             cmd press_key
@@ -258,7 +316,7 @@ class Model:
             state free
             =retrieval>
             isa word
-            object_indicator True
+            cat object_indicator
             ==>
             =g>
             isa goal
@@ -336,7 +394,7 @@ class Model:
 
     def sim(self):
         s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
-             " die periode")
+             " die periode . hij besprak")
         # The simulation requires a dictionary for some reason...
         # w = dict(enumerate(self.sentence_to_env(s)))
         # print(w)
@@ -367,6 +425,9 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--gui", help="Run with a gui",
                         action="store_true")
 
+    # XXX: For now nargs="+" is fine. If we also need positional arguments the
+    # grammar of the arguments will be ambiguous. Use action="append" then.
+    # (This is also a bit better since this is the GNU standard way I think?)
     parser.add_argument("-f", "--filters", nargs="+",
                         help=("Filter the output of the simulation. Specify "
                               "one or more strings as filters. A step of the "
