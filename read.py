@@ -2,14 +2,30 @@ import pyactr as actr
 
 
 class Model:
-    def __init__(self, gui=True):
+    def __init__(self, gui=True, subsymbolic=False):
         self.gui = gui
         # Left-to-right reading. Start at (0, 0)
 
         self.environment = actr.Environment(focus_position=(0, 0))
 
-        self.model = actr.ACTRModel(environment=self.environment,
-                                    automatic_visual_search=False)
+        if subsymbolic:
+            self.model = actr.ACTRModel(environment=self.environment,
+                                        automatic_visual_search=False,
+                                        # XXX: doesn't seem to do anything
+                                        activation_trace=True,
+                                        emma_noise=False,
+                                        subsymbolic=True)
+            # retrieval_threshold=0.92,\
+            # instantaneous_noise=1.77,\
+            # latency_factor=0.45,\
+            # latency_exponent=0.28,\
+            # decay=0.095,\
+            # motor_prepared=True,
+            # eye_mvt_scaling_parameter=0.23,\
+            # emma_noise=False)
+        else:
+            self.model = actr.ACTRModel(environment=self.environment,
+                                        automatic_visual_search=False)
 
         self.lexicon = ["de", "besprak", "met", "het", "onderzoeksvoorstel",
                         "die", "periode", "geen", "nieuwe",
@@ -289,11 +305,6 @@ class Model:
             key 'space'
         """)
 
-        # TODO: this allows the retrieval of the _current_ word. This
-        # is not desired.
-        # Possible solution:
-        # let hij and zij have some property that distinguishes them from other
-        # noun. Problem: then no reference can be made to a hij of zij
         self.model.productionstring(name=("lexeme retrieved (noun):"
                                           " start reference retrieval"),
                                     string="""
@@ -307,7 +318,7 @@ class Model:
             =retrieval>
             isa noun
             cat noun
-            from =f
+            gender =g
             ==>
             =g>
             isa goal
@@ -408,14 +419,14 @@ class Model:
             state 'start'
         """)
 
-    def sentence_to_env(self, s):
+    def sentence_to_stimuli(self, s):
         wl = s.split(' ')
 
         return ([{p: self.env_word(wl, p), p+1: self.env_dash(p+1)}
                 for p in range(len(wl) - 1)] +
                 [{len(wl)-1: self.env_word(wl, len(wl)-1)}])
 
-    def sentence_to_env2(self, s):
+    def sentence_to_stimuli2(self, s):
         wl = s.split(' ')
         return [dict(enumerate(self.dashed_env(wl, p)))
                 for p in range(len(wl))]
@@ -455,13 +466,13 @@ class Model:
         s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
              " die periode . hij besprak")
         # The simulation requires a dictionary for some reason...
-        # w = dict(enumerate(self.sentence_to_env(s)))
+        # w = dict(enumerate(self.sentence_to_stimuli(s)))
         # print(w)
         sim = self.model.simulation(
             realtime=True,
             gui=self.gui,
             environment_process=self.environment.environment_process,
-            stimuli=self.sentence_to_env(s),
+            stimuli=self.sentence_to_stimuli(s),
             triggers=['space'],
             times=10000)
         return sim
@@ -492,9 +503,13 @@ if __name__ == "__main__":
                               "one or more strings as filters. A step of the "
                               "simulation is only printed when it contains "
                               "such string"))
+    parser.add_argument("-s", "--subsymbolic",
+                        help="Use the subsymbolic ACT-R model",
+                        action="store_true")
+
     args = parser.parse_args()
 
-    m = Model(gui=args.gui)
+    m = Model(gui=args.gui, subsymbolic=args.subsymbolic)
     sim = m.sim()
     if not args.dry_run and not args.filters:
         sim.run()
