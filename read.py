@@ -289,6 +289,11 @@ class Model:
             key 'space'
         """)
 
+        # TODO: this allows the retrieval of the _current_ word. This
+        # is not desired.
+        # Possible solution:
+        # let hij and zij have some property that distinguishes them from other
+        # noun. Problem: then no reference can be made to a hij of zij
         self.model.productionstring(name=("lexeme retrieved (noun):"
                                           " start reference retrieval"),
                                     string="""
@@ -302,7 +307,7 @@ class Model:
             =retrieval>
             isa noun
             cat noun
-            gender =g
+            from =f
             ==>
             =g>
             isa goal
@@ -381,6 +386,8 @@ class Model:
             =g>
             isa goal
             state 'start'
+            !retrieval>
+            show form
             +manual>
             isa _manual
             cmd press_key
