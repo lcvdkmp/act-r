@@ -1,8 +1,19 @@
 import pyactr as actr
+import random
 
+
+# TODO:
+#    - For some reason the word "met" is not retrieved when using subsymbolic
+#      mode. Maybe retrieval of words is not always successful when attempted
+#      in subsymbolic mode??
+#    - A way to stop the retrieval of the current read word when retrieving a
+#      reference
 
 class Model:
-    def __init__(self, gui=True, subsymbolic=False):
+
+    NSEC_IN_YEAR = int(round(60 * 60 * 24 * 364.25))
+
+    def __init__(self, gui=True, subsymbolic=False, activation_trace=False):
         self.gui = gui
         # Left-to-right reading. Start at (0, 0)
 
@@ -11,21 +22,22 @@ class Model:
         if subsymbolic:
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
-                                        # XXX: doesn't seem to do anything
-                                        activation_trace=True,
+                                        activation_trace=activation_trace,
                                         emma_noise=False,
-                                        subsymbolic=True)
-            # retrieval_threshold=0.92,\
-            # instantaneous_noise=1.77,\
-            # latency_factor=0.45,\
-            # latency_exponent=0.28,\
-            # decay=0.095,\
-            # motor_prepared=True,
-            # eye_mvt_scaling_parameter=0.23,\
-            # emma_noise=False)
+                                        subsymbolic=True,
+                                        retrieval_threshold=0.92,
+                                        instantaneous_noise=1.77,
+                                        latency_factor=0.45,
+                                        latency_exponent=0.28,
+                                        decay=0.095,
+                                        motor_prepared=True,
+                                        eye_mvt_scaling_parameter=0.23)
         else:
             self.model = actr.ACTRModel(environment=self.environment,
-                                        automatic_visual_search=False)
+                                        automatic_visual_search=False,
+                                        eye_mvt_scaling_parameter=0.23,
+                                        motor_prepared=True,
+                                        emma_noise=False)
 
         self.lexicon = ["de", "besprak", "met", "het", "onderzoeksvoorstel",
                         "die", "periode", "geen", "nieuwe",
@@ -42,26 +54,29 @@ class Model:
         actr.chunktype("word", "form, cat")
         actr.chunktype("noun", "form, cat, gender")
 
-        for w in self.sentence_terminators:
-            self.model.decmem.add(actr.makechunk(typename="word",
-                                                 nameofchunk=w, form=w,
-                                                 cat="terminator"))
+        self.chunks = []
 
-        for w in self.lexicon:
-            self.model.decmem.add(actr.makechunk(typename="word",
-                                                 nameofchunk=w, form=w,
-                                                 cat="word"))
+        self.chunks += [actr.makechunk(typename="word", nameofchunk=w, form=w,
+                                       cat="terminator")
+                        for w in self.sentence_terminators]
 
-        for w in self.object_indicators:
-            self.model.decmem.add(actr.makechunk(typename="word",
-                                                 nameofchunk=w, form=w,
-                                                 cat="object_indicator",
-                                                 ))
+        self.chunks += [actr.makechunk(typename="word", nameofchunk=w, form=w,
+                                       cat="word")
+                        for w in self.lexicon]
 
-        for (n, g) in self.nouns + self.back_reference_objects:
-            self.model.decmem.add(actr.makechunk(typename="noun",
-                                                 nameofchunk=n, form=n,
-                                                 cat="noun", gender=g))
+        self.chunks += [actr.makechunk(typename="word",
+                                       nameofchunk=w, form=w,
+                                       cat="object_indicator")
+                        for w in self.object_indicators]
+
+        self.chunks += [actr.makechunk(typename="noun", nameofchunk=n, form=n,
+                                       cat="noun", gender=g)
+                        for (n, g) in self.nouns + self.back_reference_objects]
+
+        for c in self.chunks:
+            for _ in range(0, self.freq(c.form)):
+                self.model.decmem.add(c, time=random.randint(-self.NSEC_IN_YEAR
+                                                             * 15, 0))
 
         actr.chunktype("goal", ("state, expecting_object,"
                                 "first_word_attended, subject_attended,"
@@ -371,7 +386,7 @@ class Model:
         """)
 
         self.model.productionstring(name="no lexeme found", string="""
-            =g>
+            =g >
             isa goal
             state 'encoding_done'
             ?retrieval>
@@ -418,6 +433,9 @@ class Model:
             isa goal
             state 'start'
         """)
+
+    def freq(self, _):
+        return 1000
 
     def sentence_to_stimuli(self, s):
         wl = s.split(' ')
@@ -474,7 +492,10 @@ class Model:
             environment_process=self.environment.environment_process,
             stimuli=self.sentence_to_stimuli(s),
             triggers=['space'],
-            times=10000)
+            # Set the timeout to something big enough so that timeout will
+            # hopefully never trigger. The stimuli should always be cycled by
+            # the triggers instead.
+            times=1000)
         return sim
 
     def run(self):
@@ -494,6 +515,8 @@ if __name__ == "__main__":
                         action="store_true")
     parser.add_argument("-g", "--gui", help="Run with a gui",
                         action="store_true")
+    parser.add_argument("-t", "--activation-trace",
+                        help="Output activation trace", action="store_true")
 
     # XXX: For now nargs="+" is fine. If we also need positional arguments the
     # grammar of the arguments will be ambiguous. Use action="append" then.
@@ -507,11 +530,16 @@ if __name__ == "__main__":
                         help="Use the subsymbolic ACT-R model",
                         action="store_true")
 
+    parser.add_argument("--diff-formatted",
+                        help="Output the steps in a way that helps diff.",
+                        action="store_true")
+
     args = parser.parse_args()
 
-    m = Model(gui=args.gui, subsymbolic=args.subsymbolic)
+    m = Model(gui=args.gui, subsymbolic=args.subsymbolic,
+              activation_trace=args.activation_trace)
     sim = m.sim()
-    if not args.dry_run and not args.filters:
+    if not args.dry_run and not args.filters and not args.diff_formatted:
         sim.run()
     elif args.filters:
         while True:
@@ -520,3 +548,7 @@ if __name__ == "__main__":
                            args.filters):
                 print("{}: {}".format(sim.current_event.time,
                                       sim.current_event.action))
+    elif args.diff_formatted:
+        while True:
+            sim.step()
+            print(sim.current_event.action)
