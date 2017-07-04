@@ -15,8 +15,8 @@ class Model:
 
     def __init__(self, gui=True, subsymbolic=False, activation_trace=False):
         self.gui = gui
-        # Left-to-right reading. Start at (0, 0)
 
+        # TODO: focus on the first word initially
         self.environment = actr.Environment(focus_position=(0, 0))
 
         if subsymbolic:
@@ -499,12 +499,6 @@ class Model:
         return sim
 
     def run(self):
-        # while True:
-        #     sim.step()
-        #     if sim.current_event.action.startswith("RETRIEVED:"):
-        #         print("{}: {}".format(sim.current_event.time,
-        #                               sim.current_event.action))
-        # sim.run()
         self.sim().run()
 
 
