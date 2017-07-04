@@ -16,8 +16,13 @@ class Model:
     def __init__(self, gui=True, subsymbolic=False, activation_trace=False):
         self.gui = gui
 
-        # TODO: focus on the first word initially
-        self.environment = actr.Environment(focus_position=(0, 0))
+        s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
+             " die periode . hij besprak")
+
+        # Set initial focus on the first word
+        self.environment = actr.Environment(focus_position=self.TEXT_MARGIN)
+
+        self.stimuli = self.sentence_to_stimuli(s)
 
         if subsymbolic:
             self.model = actr.ACTRModel(environment=self.environment,
@@ -481,8 +486,6 @@ class Model:
         return {'text': '___', 'position': self.env_pos(p)}
 
     def sim(self):
-        s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
-             " die periode . hij besprak")
         # The simulation requires a dictionary for some reason...
         # w = dict(enumerate(self.sentence_to_stimuli(s)))
         # print(w)
@@ -490,7 +493,7 @@ class Model:
             realtime=True,
             gui=self.gui,
             environment_process=self.environment.environment_process,
-            stimuli=self.sentence_to_stimuli(s),
+            stimuli=self.stimuli,
             triggers=['space'],
             # Set the timeout to something big enough so that timeout will
             # hopefully never trigger. The stimuli should always be cycled by
