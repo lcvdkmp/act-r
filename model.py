@@ -480,10 +480,12 @@ class Model:
 
     def env_word(self, wl, p):
         w = wl[p]
-        return {'text': w, 'position': self.env_pos(p)}
+        # Note the vis_delay. This makes the reading delay proportional to the
+        # word length
+        return {'text': w, 'position': self.env_pos(p), 'vis_delay': len(w)}
 
     def env_dash(self, p):
-        return {'text': '___', 'position': self.env_pos(p)}
+        return {'text': '___', 'position': self.env_pos(p), 'vis_delay': 3}
 
     def sim(self):
         # The simulation requires a dictionary for some reason...

@@ -4,3 +4,13 @@ Explicitly store subject.
 Do recall on "hij" or "zij":
 	Find subject or object with matching gender and that has been seen before in
 	the sentence.
+
+NEW:
+
+Use word length in reading speed
+
+Model "." differently. Use position of sentence maybe
+
+Use the dataset of words for subsymbolic
+
+Change screen size to fit sentence
