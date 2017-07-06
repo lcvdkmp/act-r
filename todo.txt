@@ -2,10 +2,10 @@ Store all words in sentence?
 
 NEW:
 
-Model "." differently. Use position of sentence maybe
+Fix bug that causes words to be skipped
+
+On last word of second sentence read: reset states
 
 Use the dataset of words for subsymbolic
-
-Change screen size to fit sentence
 
 Store words parsed in another way. THen retrieval on reference is possible

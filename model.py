@@ -2,13 +2,6 @@ import pyactr as actr
 import random
 
 
-# TODO:
-#    - For some reason the word "met" is not retrieved when using subsymbolic
-#      mode. Maybe retrieval of words is not always successful when attempted
-#      in subsymbolic mode??
-#    - A way to stop the retrieval of the current read word when retrieving a
-#      reference
-
 class Model:
 
     NSEC_IN_YEAR = int(round(60 * 60 * 24 * 365.25))
@@ -22,8 +15,7 @@ class Model:
         s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
              " die periode. hij besprak")
 
-        self.process_sentence_pairs([s])
-        print(self.sentence_pairs)
+        self.process_sentence_pairs([s, s])
 
         vx = self.env_pos_x_virtual(self.env_size()) + self.TEXT_MARGIN[0]
         vy = 320
@@ -131,6 +123,7 @@ class Model:
             =g>
             isa goal
             state 'start'
+            in_second_sentence ~True
             =visual_location>
             isa _visuallocation
             screen_y {}
@@ -140,6 +133,31 @@ class Model:
             =g>
             isa goal
             state 'encoding'
+            +visual>
+            isa _visual
+            cmd move_attention
+            screen_pos =visual_location
+            ~visual_location>
+        """.format(self.TEXT_MARGIN[0]))
+
+        self.model.productionstring(name="attend word (first sentence - reset state)", string="""
+            =g>
+            isa goal
+            state 'start'
+            in_second_sentence True
+            =visual_location>
+            isa _visuallocation
+            screen_y {}
+            ?visual>
+            state free
+            ==>
+            =g>
+            isa goal
+            state 'encoding'
+            in_second_sentence False
+            subject_attended False
+            first_word_attended False
+            expecting_object False
             +visual>
             isa _visual
             cmd move_attention
@@ -596,4 +614,3 @@ if __name__ == "__main__":
     elif args.diff_formatted:
         while True:
             sim.step()
-            print(sim.current_event.action)
