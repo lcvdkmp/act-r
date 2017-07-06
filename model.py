@@ -1,5 +1,6 @@
 import pyactr as actr
 import random
+import itertools
 
 
 # TODO:
@@ -13,16 +14,27 @@ class Model:
 
     NSEC_IN_YEAR = int(round(60 * 60 * 24 * 365.25))
 
+    TEXT_MARGIN = (30, 30)
+    TEXT_SPACING = (60, 12)
+
     def __init__(self, gui=True, subsymbolic=False, activation_trace=False):
         self.gui = gui
 
         s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
-             " die periode . hij besprak")
+             " die periode. hij besprak")
+
+        self.process_sentence_pairs([s])
+        print(self.sentence_pairs)
+
+        vx = self.env_pos_x_virtual(self.env_size()) + self.TEXT_MARGIN[0]
+        vy = 320
 
         # Set initial focus on the first word
-        self.environment = actr.Environment(focus_position=self.TEXT_MARGIN)
+        self.environment = actr.Environment(focus_position=self.TEXT_MARGIN,
+                                            size=(vx, vy))
 
-        self.stimuli = self.sentence_to_stimuli(s)
+        self.stimuli = list(self.stimuli_gen())
+        print(self.stimuli)
 
         if subsymbolic:
             self.model = actr.ACTRModel(environment=self.environment,
@@ -445,31 +457,56 @@ class Model:
     def freq(self, _):
         return 1000
 
+    def process_sentence_pairs(self, l):
+        self.sentence_pairs = []
+        for s in l:
+            st = map(lambda x: x.strip(), s.split("."))
+            self.sentence_pairs += [list(map(lambda x: x.split(" "), st))]
+
+    def stimuli_gen(self):
+        for s in self.sentence_pairs:
+            def special_product(l1, l2):
+                """
+                Given a list l2 and a list of indices l1, yield all tuples
+                (x, y) where x is an index in l1 and y is l2[x].
+                """
+                for i in l1:
+                    for j in range(0, len(l2[i])):
+                        yield (i, j)
+
+            # Calculate the positions of the words in the first and the second
+            # sentence.
+            pos = [(x * self.TEXT_SPACING[0] + self.TEXT_MARGIN[0],
+                    self.TEXT_MARGIN[1] + i * self.TEXT_SPACING[1])
+                   for (i, x) in special_product((0, 1), s)]
+
+            # Yield stimuli environments for all words.
+            for i, p in enumerate(pos):
+                # If p[1] = self.TEXT_MARGIN[1] the corresponding word came
+                # from s[0]. The word came from s[1] otherwise.
+                d = [{"text":
+                      s[0][i] if p[1] is self.TEXT_MARGIN[1] else
+                      s[1][i - (len(s[0]))],
+                     "position": p}]
+
+                if i < len(pos)-1:
+                    d += [{"text": "___", "position": pos[i+1]}]
+
+                # The simulation requires a dictionary for some reason...
+                yield dict(enumerate(d))
+
     def sentence_to_stimuli(self, s):
-        wl = s.split(' ')
+        wl = s.split(" ")
 
         return ([{p: self.env_word(wl, p), p+1: self.env_dash(p+1)}
                 for p in range(len(wl) - 1)] +
                 [{len(wl)-1: self.env_word(wl, len(wl)-1)}])
 
-    def sentence_to_stimuli2(self, s):
-        wl = s.split(' ')
-        return [dict(enumerate(self.dashed_env(wl, p)))
-                for p in range(len(wl))]
+    def env_size(self):
+        return max(map(lambda x: max(map(len, x)), self.sentence_pairs))
 
-    TEXT_MARGIN = (30, 10)
-    TEXT_SPACING = (60, 12)
-
-    def dashed_env(self, wl, p):
-        pos = list(self.TEXT_MARGIN)
-        max_s = self.environment.size
-        for (i, w) in enumerate(wl):
-            yield {'text': w if i == p else '_' * len(w),
-                   'position': tuple(pos)}
-            pos[0] += self.TEXT_SPACING[0]
-            if pos[0] > max_s[0]:
-                pos[0] = self.TEXT_MARGIN[0]
-                pos[1] += self.TEXT_SPACING[1]
+    def env_pos_x_virtual(self, p):
+        return self.TEXT_MARGIN[0] + self.TEXT_SPACING[0] * p
 
     def env_pos(self, p):
         pos = list(self.TEXT_MARGIN)
