@@ -1,6 +1,5 @@
 import pyactr as actr
 import random
-import itertools
 
 
 # TODO:
@@ -68,17 +67,11 @@ class Model:
 
         self.back_reference_objects = [("hij", "masc"), ("zij", "fem")]
 
-        self.sentence_terminators = ["."]
-
         actr.chunktype("word", "form, cat")
         actr.chunktype("noun", "form, cat, gender")
         # actr.chunktype("read_word", "word, use, gender")
 
         self.chunks = []
-
-        self.chunks += [actr.makechunk(typename="word", nameofchunk=w, form=w,
-                                       cat="terminator")
-                        for w in self.sentence_terminators]
 
         self.chunks += [actr.makechunk(typename="word", nameofchunk=w, form=w,
                                        cat="word")
@@ -129,13 +122,18 @@ class Model:
             screen_y lowest
         """)
 
-        # Attend to the object found
-        self.model.productionstring(name="attend word", string="""
+        # Attend to the object found. There is a distinction between words on
+        # the first and second sentence to update the in_second_sentence state.
+        #
+        # Note that we know that words in the first sentence have a y position
+        # of self.TEXT_MARGIN[0]
+        self.model.productionstring(name="attend word (first sentence)", string="""
             =g>
             isa goal
             state 'start'
             =visual_location>
             isa _visuallocation
+            screen_y {}
             ?visual>
             state free
             ==>
@@ -147,7 +145,28 @@ class Model:
             cmd move_attention
             screen_pos =visual_location
             ~visual_location>
-        """)
+        """.format(self.TEXT_MARGIN[0]))
+
+        self.model.productionstring(name="attend word (second sentence)", string="""
+            =g>
+            isa goal
+            state 'start'
+            =visual_location>
+            isa _visuallocation
+            screen_y ~{}
+            ?visual>
+            state free
+            ==>
+            =g>
+            isa goal
+            state 'encoding'
+            in_second_sentence True
+            +visual>
+            isa _visual
+            cmd move_attention
+            screen_pos =visual_location
+            ~visual_location>
+        """.format(self.TEXT_MARGIN[0]))
 
         self.add_parse_rules()
 
@@ -305,7 +324,6 @@ class Model:
             =retrieval>
             isa word
             cat ~noun
-            cat ~terminator
             cat ~object_indicator
             ==>
             =g>
@@ -360,28 +378,7 @@ class Model:
             state 'retrieving_reference'
             +retrieval>
             isa noun
-            attended True
-        """)
-
-        self.model.productionstring(name="lexeme retrieved (terminator)", string="""
-            =g>
-            isa goal
-            state 'encoding_done'
-            ?retrieval>
-            buffer full
-            state free
-            =retrieval>
-            isa word
-            cat terminator
-            ==>
-            =g>
-            isa goal
-            state 'start'
-            in_second_sentence True
-            +manual>
-            isa _manual
-            cmd press_key
-            key 'space'
+            gender =g
         """)
 
         self.model.productionstring(name="lexeme retrieved (object indicator)", string="""
@@ -484,13 +481,18 @@ class Model:
             for i, p in enumerate(pos):
                 # If p[1] = self.TEXT_MARGIN[1] the corresponding word came
                 # from s[0]. The word came from s[1] otherwise.
-                d = [{"text":
-                      s[0][i] if p[1] is self.TEXT_MARGIN[1] else
-                      s[1][i - (len(s[0]))],
-                     "position": p}]
+                if p[1] is self.TEXT_MARGIN[1]:
+                    w = s[0][i]
+                else:
+                    w = s[1][i - (len(s[0]))]
+
+                d = [{"text": w,
+                      "position": p,
+                      "vis_delay": len(w)}]
 
                 if i < len(pos)-1:
-                    d += [{"text": "___", "position": pos[i+1]}]
+                    d += [{"text": "___", "position": pos[i+1],
+                           "vis_delay": 1}]
 
                 # The simulation requires a dictionary for some reason...
                 yield dict(enumerate(d))
