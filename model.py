@@ -371,14 +371,14 @@ class Model:
             =retrieval>
             isa noun
             cat noun
-            gender =g
+            gender =gd
             ==>
             =g>
             isa goal
             state 'retrieving_reference'
             +retrieval>
             isa noun
-            gender =g
+            gender =gd
         """)
 
         self.model.productionstring(name="lexeme retrieved (object indicator)", string="""
@@ -418,7 +418,7 @@ class Model:
                                     string="""
             =g>
             isa goal
-            state 'encoding_done'
+            state 'retrieving_reference'
             in_second_sentence True
             ?retrieval>
             buffer full
@@ -441,7 +441,7 @@ class Model:
                                     string="""
             =g>
             isa goal
-            state 'encoding_done'
+            state 'retrieving_reference'
             in_second_sentence True
             ?retrieval>
             state error
