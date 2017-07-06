@@ -11,7 +11,7 @@ import random
 
 class Model:
 
-    NSEC_IN_YEAR = int(round(60 * 60 * 24 * 364.25))
+    NSEC_IN_YEAR = int(round(60 * 60 * 24 * 365.25))
 
     def __init__(self, gui=True, subsymbolic=False, activation_trace=False):
         self.gui = gui
@@ -44,6 +44,8 @@ class Model:
                                         motor_prepared=True,
                                         emma_noise=False)
 
+        # self.imaginal = self.model.set_goal(name="imaginal")
+
         self.lexicon = ["de", "besprak", "met", "het", "onderzoeksvoorstel",
                         "die", "periode", "geen", "nieuwe",
                         "resultaten", "van", "periode", "een"]
@@ -58,6 +60,7 @@ class Model:
 
         actr.chunktype("word", "form, cat")
         actr.chunktype("noun", "form, cat, gender")
+        # actr.chunktype("read_word", "word, use, gender")
 
         self.chunks = []
 
@@ -491,9 +494,13 @@ class Model:
         # The simulation requires a dictionary for some reason...
         # w = dict(enumerate(self.sentence_to_stimuli(s)))
         # print(w)
+
+        # If gui is set to False, the simulation only runs for at most 1
+        # second. Setting realtime to False and gui to True results in the
+        # expected effect when no gui is desired.
         sim = self.model.simulation(
-            realtime=True,
-            gui=self.gui,
+            realtime=self.gui,
+            gui=True,
             environment_process=self.environment.environment_process,
             stimuli=self.stimuli,
             triggers=['space'],
