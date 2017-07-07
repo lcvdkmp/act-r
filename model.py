@@ -94,7 +94,6 @@ class Model:
                                            in_second_sentence=False))
 
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
-                                # finst=float("inf"))
                                 finst=5)
 
         # Find a word on the screen
@@ -106,6 +105,9 @@ class Model:
             ?visual_location>
             buffer empty
             ==>
+            =g>
+            isa goal
+            state 'attend'
             ?visual_location>
             attended False
             +visual_location>
@@ -122,7 +124,7 @@ class Model:
         self.model.productionstring(name="attend word (first sentence)", string="""
             =g>
             isa goal
-            state 'start'
+            state 'attend'
             in_second_sentence ~True
             =visual_location>
             isa _visuallocation
@@ -143,7 +145,7 @@ class Model:
         self.model.productionstring(name="attend word (first sentence - reset state)", string="""
             =g>
             isa goal
-            state 'start'
+            state 'attend'
             in_second_sentence True
             =visual_location>
             isa _visuallocation
@@ -168,7 +170,7 @@ class Model:
         self.model.productionstring(name="attend word (second sentence)", string="""
             =g>
             isa goal
-            state 'start'
+            state 'attend'
             =visual_location>
             isa _visuallocation
             screen_y ~{}
@@ -186,11 +188,6 @@ class Model:
             ~visual_location>
         """.format(self.TEXT_MARGIN[0]))
 
-        self.add_parse_rules()
-
-    # encoding -> encoding_done
-    def add_parse_rules(self):
-        # Dummy recall.
         self.model.productionstring(name="waiting for word", string="""
             =g>
             isa goal
@@ -229,6 +226,7 @@ class Model:
             +retrieval>
             isa word
             form =val
+            ~visual>
         """)
 
         # Recall an object. An object is expected because an object indicator
@@ -253,6 +251,7 @@ class Model:
             +retrieval>
             isa noun
             form =val
+            ~visual>
         """)
 
         # Recall a subject. A subject is expected because the first word has
@@ -279,6 +278,7 @@ class Model:
             +retrieval>
             isa noun
             form =val
+            ~visual>
         """)
 
         # A normal word recall that should be fired if no other recall can be
@@ -304,6 +304,7 @@ class Model:
             +retrieval>
             isa word
             form =val
+            ~visual>
         """)
 
         # XXX: might not be realistic.
@@ -351,10 +352,15 @@ class Model:
             isa _manual
             cmd press_key
             key 'space'
+            ~retrieval>
         """)
 
         # Retrieve a noun without trying to recall a reference to a previous
         # sentence (no sentence read before)
+
+        # TODO:
+        # =retrieval>
+        # store something that it was attended. role=subject or something
         self.model.productionstring(name="lexeme retrieved (noun)", string="""
             =g>
             isa goal
@@ -374,6 +380,7 @@ class Model:
             isa _manual
             cmd press_key
             key 'space'
+            ~retrieval>
         """)
 
         self.model.productionstring(name=("lexeme retrieved (noun):"
@@ -397,6 +404,7 @@ class Model:
             +retrieval>
             isa noun
             gender =gd
+            ~retrieval>
         """)
 
         self.model.productionstring(name="lexeme retrieved (object indicator)", string="""
@@ -418,6 +426,7 @@ class Model:
             isa _manual
             cmd press_key
             key 'space'
+            ~retrieval>
         """)
 
         self.model.productionstring(name="no lexeme found", string="""
@@ -430,6 +439,7 @@ class Model:
             =g>
             isa goal
             state 'start'
+            ~retrieval>
         """)
 
         self.model.productionstring(name="reference retrieved",
@@ -453,6 +463,7 @@ class Model:
             isa _manual
             cmd press_key
             key 'space'
+            ~retrieval>
         """)
 
         self.model.productionstring(name="no reference retrieved:",
@@ -467,6 +478,7 @@ class Model:
             =g>
             isa goal
             state 'start'
+            ~retrieval>
         """)
 
     def freq(self, _):
