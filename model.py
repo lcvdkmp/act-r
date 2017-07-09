@@ -27,19 +27,28 @@ class Model:
         self.stimuli = list(self.stimuli_gen())
         print(self.stimuli)
 
+        # TODO: estimate:
+        #       - eye_mvt
+        #           half normal sd=0.5
+        #       - eye_map
+        #           gamma as=0.7
+        #       - rule_firing (with and without)
+        #           half normal sd=0.5
+
         if subsymbolic:
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
                                         activation_trace=activation_trace,
                                         emma_noise=False,
                                         subsymbolic=True,
-                                        retrieval_threshold=0.92,
-                                        instantaneous_noise=1.77,
-                                        latency_factor=0.45,
-                                        latency_exponent=0.28,
-                                        decay=0.095,
-                                        motor_prepared=True,
-                                        eye_mvt_scaling_parameter=0.23)
+                                        # retrieval_threshold=0.92,
+                                        # instantaneous_noise=1.77,
+                                        # latency_factor=0.45,
+                                        # latency_exponent=0.28,
+                                        # decay=0.095,
+                                        motor_prepared=True
+                                        # eye_mvt_scaling_parameter=0.23)
+                                        )
         else:
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
@@ -487,7 +496,7 @@ class Model:
     def process_sentence_pairs(self, l):
         self.sentence_pairs = []
         for s in l:
-            st = map(lambda x: x.strip(), s.split("."))
+            st = map(str.strip, s.split("."))
             self.sentence_pairs += [list(map(lambda x: x.split(" "), st))]
 
     def stimuli_gen(self):
