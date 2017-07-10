@@ -4,9 +4,11 @@ NEW:
 
 Store words parsed in another way. THen retrieval on reference is possible
 
-Use the dataset of words for subsymbolic
 
-Make separate model for if noun is on third word?
-Or change the model so that the first noun parsed is always regarded as an
-object and second as a subject? This would allow all 32 sentences to be parsed
-correctly. But we need info on what the subject and objects are??? or no?
+Make separate model/mode for when we only do reading (no sentence structure retrieval)
+
+Use both first and second sentence??
+
+Train model on data
+
+Use the dataset of words for subsymbolic

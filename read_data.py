@@ -21,6 +21,7 @@ class ModelConstructor():
         print("All frequency information found")
 
     def read_sentences(self, fn, vc):
+        # TODO: also retrieve second sentence
         def parse_sentence(l, i):
             ss, nl = lex_sentence(l)
             wl = ss[0].split(" ")
