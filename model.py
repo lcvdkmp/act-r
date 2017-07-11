@@ -9,13 +9,14 @@ class Model:
     TEXT_MARGIN = (30, 30)
     TEXT_SPACING = (60, 12)
 
-    def __init__(self, gui=True, subsymbolic=False, activation_trace=False):
+    def __init__(self, gui=True, subsymbolic=False, activation_trace=False,
+                 advanced=True):
         self.gui = gui
 
         s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
              " die periode. hij besprak")
 
-        self.process_sentence_pairs([s, s])
+        self.process_sentence_pairs([s])
 
         vx = self.env_pos_x_virtual(self.env_size()) + self.TEXT_MARGIN[0]
         vy = 320
@@ -62,7 +63,7 @@ class Model:
                         "die", "periode", "geen", "nieuwe",
                         "resultaten", "van", "periode", "een"]
 
-        self.nouns = [("professor", "masc"), ("vriend", "fem")]
+        self.nouns = [("professor", "masc"), ("vriend", "masc")]
 
         self.object_indicators = ["enkele"]
 
@@ -106,7 +107,6 @@ class Model:
                                 finst=5)
 
         # Find a word on the screen
-        # TODO: maybe change to lowest
         self.model.productionstring(name="find word", string="""
             =g>
             isa goal
@@ -124,6 +124,120 @@ class Model:
             screen_x lowest
             screen_y lowest
         """)
+
+        self.model.productionstring(name="waiting for word", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            =visual>
+            isa _visual
+            value "___"
+            ==>
+            =g>
+            isa goal
+            state 'start'
+        """)
+
+        # XXX: might not be realistic.
+        # The problem is that when a visual object dissapears from the
+        # environment while it was found (and therefore being attended), the
+        # value of the visual buffer will be set to None.
+        # We have to make sure we try to find a new word when this happens.
+        self.model.productionstring(name="recover from lost word", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            ?visual>
+            state free
+            =visual>
+            isa _visual
+            value None
+            ==>
+            =g>
+            isa goal
+            state 'start'
+        """)
+
+        self.model.productionstring(name="no lexeme found", string="""
+            =g >
+            isa goal
+            state 'encoding_done'
+            ?retrieval>
+            state error
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            ~retrieval>
+        """)
+
+        if advanced:
+            self.advanced_mode()
+        else:
+            self.basic_mode()
+
+    def basic_mode(self):
+        self.model.productionstring(name="attend word", string="""
+            =g>
+            isa goal
+            state 'attend'
+            =visual_location>
+            isa _visuallocation
+            ?visual>
+            state free
+            ==>
+            =g>
+            isa goal
+            state 'encoding'
+            +visual>
+            isa _visual
+            cmd move_attention
+            screen_pos =visual_location
+            ~visual_location>
+        """)
+
+        self.model.productionstring(name="recalling", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            ?visual>
+            buffer full
+            =visual>
+            isa _visual
+            value =val
+            value ~"___"
+            value ~None
+            ==>
+            =g>
+            isa goal
+            state 'encoding_done'
+            +retrieval>
+            isa word
+            form =val
+            ~visual>
+        """)
+
+        self.model.productionstring(name="lexeme retrieved", string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa word
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            +manual>
+            isa _manual
+            cmd press_key
+            key 'space'
+            ~retrieval>
+        """)
+
+    def advanced_mode(self):
 
         # Attend to the object found. There is a distinction between words on
         # the first and second sentence to update the in_second_sentence state.
@@ -197,19 +311,6 @@ class Model:
             ~visual_location>
         """.format(self.TEXT_MARGIN[0]))
 
-        self.model.productionstring(name="waiting for word", string="""
-            =g>
-            isa goal
-            state 'encoding'
-            =visual>
-            isa _visual
-            value "___"
-            ==>
-            =g>
-            isa goal
-            state 'start'
-        """)
-
         # Recall the first word.
         # This is a special case because we want this to set the
         # first_word_attended and we don't want this rule to fire when a
@@ -256,7 +357,6 @@ class Model:
             =g>
             isa goal
             state 'encoding_done'
-            expecting_object False
             +retrieval>
             isa noun
             form =val
@@ -283,7 +383,6 @@ class Model:
             =g>
             isa goal
             state 'encoding_done'
-            subject_attended True
             +retrieval>
             isa noun
             form =val
@@ -316,30 +415,6 @@ class Model:
             ~visual>
         """)
 
-        # XXX: might not be realistic.
-        # The problem is that when a visual object dissapears from the
-        # environment while it was found (and therefore being attended), the
-        # value of the visual buffer will be set to None.
-        # We have to make sure we try to find a new word when this happens
-        # to find a new word.
-        #
-        # But it would be more natural for the value to just become the word
-        # that was originally at the place of the dashes.
-        self.model.productionstring(name="recover from lost word", string="""
-            =g>
-            isa goal
-            state 'encoding'
-            ?visual>
-            state free
-            =visual>
-            isa _visual
-            value None
-            ==>
-            =g>
-            isa goal
-            state 'start'
-        """)
-
         # TODO: could replace the cat ~ stuf with cat word if word is the only
         # thing we are  catching here in the end
         self.model.productionstring(name="lexeme retrieved", string="""
@@ -366,15 +441,18 @@ class Model:
 
         # Retrieve a noun without trying to recall a reference to a previous
         # sentence (no sentence read before)
+        # TODO: is the object subject split needed? Or could we just say "role
+        # noun" or something
 
         # TODO:
         # =retrieval>
         # store something that it was attended. role=subject or something
-        self.model.productionstring(name="lexeme retrieved (noun)", string="""
+        self.model.productionstring(name="lexeme retrieved (object)", string="""
             =g>
             isa goal
             state 'encoding_done'
             in_second_sentence ~True
+            expecting_object True
             ?retrieval>
             buffer full
             state free
@@ -385,6 +463,9 @@ class Model:
             =g>
             isa goal
             state 'start'
+            expecting_object False
+            =retrieval>
+            role object
             +manual>
             isa _manual
             cmd press_key
@@ -392,6 +473,35 @@ class Model:
             ~retrieval>
         """)
 
+        self.model.productionstring(name="lexeme retrieved (subject)", string="""
+            =g>
+            isa goal
+            state 'encoding_done'
+            in_second_sentence ~True
+            first_word_attended True
+            subject_attended False
+            ?retrieval>
+            buffer full
+            state free
+            =retrieval>
+            isa noun
+            cat noun
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            subject_attended True
+            =retrieval>
+            role subject
+            +manual>
+            isa _manual
+            cmd press_key
+            key 'space'
+            ~retrieval>
+        """)
+
+        # TODO: find a way to cath both role subject and role object
+        # Current approach doesn't work
         self.model.productionstring(name=("lexeme retrieved (noun):"
                                           " start reference retrieval"),
                                     string="""
@@ -413,6 +523,8 @@ class Model:
             +retrieval>
             isa noun
             gender =gd
+            role subject
+            role object
             ~retrieval>
         """)
 
@@ -435,19 +547,6 @@ class Model:
             isa _manual
             cmd press_key
             key 'space'
-            ~retrieval>
-        """)
-
-        self.model.productionstring(name="no lexeme found", string="""
-            =g >
-            isa goal
-            state 'encoding_done'
-            ?retrieval>
-            state error
-            ==>
-            =g>
-            isa goal
-            state 'start'
             ~retrieval>
         """)
 
@@ -618,10 +717,15 @@ if __name__ == "__main__":
                         help="Output the steps in a way that helps diff.",
                         action="store_true")
 
+    parser.add_argument("-b", "--basic-mode",
+                        help="Run the model in basic mode (reading only)",
+                        action="store_true")
+
     args = parser.parse_args()
 
     m = Model(gui=args.gui, subsymbolic=args.subsymbolic,
-              activation_trace=args.activation_trace)
+              activation_trace=args.activation_trace,
+              advanced=not args.basic_mode)
     sim = m.sim()
     if not args.dry_run and not args.filters and not args.diff_formatted:
         sim.run()

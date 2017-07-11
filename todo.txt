@@ -2,10 +2,8 @@ Store all words in sentence?
 
 NEW:
 
-Store words parsed in another way. THen retrieval on reference is possible
-
-
-Make separate model/mode for when we only do reading (no sentence structure retrieval)
+Find a way to retrieve something with either 
+role subject or role object
 
 Use both first and second sentence??
 
