@@ -1,6 +1,10 @@
 import pyactr as actr
 import random
 
+# Store subject in goal
+# Context activation
+# Enable subsymbolic
+
 
 class Model:
 
@@ -25,8 +29,6 @@ class Model:
                                             size=(vx, vy))
 
         self.stimuli = list(self.stimuli_gen())
-        print(self.stimuli)
-
         self.nouns = nouns
         self.object_indicators = object_indicators
         # TODO: estimate:
@@ -80,9 +82,10 @@ class Model:
                         for (n, g) in self.nouns]
 
         for c in self.chunks:
-            for _ in range(0, self.freq(c.form)):
-                self.model.decmem.add(c, time=random.randint(-self.NSEC_IN_YEAR
-                                                             * 15, 0))
+            # for _ in range(0, self.freq(c.form)):
+            #     self.model.decmem.add(c, time=random.randint(-self.NSEC_IN_YEAR
+            #                                                  * 15, 0))
+            self.model.decmem.add(c)
 
         actr.chunktype("goal", ("state, expecting_object,"
                                 "first_word_attended, subject_attended,"
@@ -493,6 +496,7 @@ class Model:
 
         # TODO: find a way to cath both role subject and role object
         # Current approach doesn't work
+
         self.model.productionstring(name=("lexeme retrieved (noun):"
                                           " start reference retrieval"),
                                     string="""

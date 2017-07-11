@@ -1,37 +1,50 @@
 import re
 import json
 import csv
+from model import Model
+
+# TODO: entries -> entries
 
 
 def format_word(w):
     return w.strip().replace('.', '').lower()
 
 
+# TODO: support for model parameters
 class ModelConstructor():
     def __init__(self, sentence_filepath,
-                 word_freq_csv, advanced=True):
-        self.entrances = []
-        self.read_sentences(sentence_filepath, not advanced)
-        print("Entrances successfully parsed: {}/{}"
-              .format(len(self.entrances), self.num_total_entrances))
+                 word_freq_csv, advanced=True, **kwargs):
+        self.kwargs = kwargs
+        self.entries = []
+        self.advanced = advanced
+        self.read_sentences(sentence_filepath, self.advanced)
+        print("entries successfully parsed: {}/{}"
+              .format(len(self.entries), self.num_total_entries))
 
         self.parse_freq_csv(word_freq_csv)
-
-        self.check_freq_completeness()
         print("All frequency information found")
 
     def read_sentences(self, fn, vc):
         # TODO: also retrieve second sentence
-        def parse_sentence(l, i):
-            ss, nl = lex_sentence(l)
-            wl = ss[0].split(" ")
+        def rem_dot(wl):
             if wl[-1][-1] == ".":
                 wl[-1] = wl[-1][:-1]
-            wl = list(map(format_word, wl))
+            return wl
+
+        def parse_sentence(l, i):
+            ss, nl = lex_sentence(l)
+            wl = [ss[0].split(" "), ss[1].split(" ")]
+            wl = [rem_dot(x) for x in wl]
+            wl = [[format_word(w) for w in x] for x in wl]
+            wl = [list(filter(None, l)) for l in wl]
             nl = list(map(str.strip, nl))
             if not vc:
                 return wl, nl
+
+            sl = wl
+            wl = sl[0]
             il = []
+            # TODO: also check second sentence
             for n in nl:
                 try:
                     ix = wl.index(n)
@@ -55,41 +68,59 @@ class ModelConstructor():
                                ' unique! Indicator: "{}"'
                                '. Skipping sentence...'
                                ).format(fn, i, indicator))
-            return wl, nl, indicator
+            return sl, nl, indicator
 
-        self.num_total_entrances = 0
+        self.num_total_entries = 0
         with open(fn, 'r') as f:
             for i, l in enumerate(f):
-                self.num_total_entrances += 1
+                self.num_total_entries += 1
                 try:
-                    self.entrances += [parse_sentence(l, i + 1)]
+                    self.entries += [parse_sentence(l, i + 1)]
                 except Warning as w:
                     print("Warning:", w)
                     continue
 
     def parse_freq_csv(self, fn):
         with open(fn, 'r') as f:
+            sh = 0
+            eh = 0
+            nh = 0
             reader = csv.DictReader(f, delimiter=',')
-            self.freqs = {format_word(r['Word']): r['RT'] for r in reader}
+            for r in reader:
+                if self.entries[eh][0][nh][sh] != format_word(r['Word']):
+                    print("skipping {}".format(format_word(r['Word'])))
+                    continue
+                self.entries[eh][0][nh][sh] = (self.entries[eh][0][nh][sh],
+                                               r['RT'])
+                sh += 1
+                if sh == len(self.entries[eh][0][nh]):
+                    if nh == 0:
+                        nh += 1
+                        sh = 0
+                    else:
+                        nh = 0
+                        sh = 0
+                        eh += 1
+            if (eh, nh, sh) != (len(self.entries), 0, 0):
+                raise Warning("Not all entries have corresponding"
+                              "frequencies!")
 
-    def check_freq_completeness(self):
-        ist = set([w for (ss, _) in self.entrances for w in ss])
-        ist -= set(self.freqs.keys())
-        if len(ist) > 0:
-            raise Exception("Missing frequency information for:"
-                            "{}".format(ist))
+            # self.freqs = {format_word(r['Word']): r['RT'] for r in reader}
 
     def model_generator(self):
-        if advanced:
-            for wl, _ in self.entrances:
-                m = Model()
-                
-
+        if not self.advanced:
+            for wl, nl in self.entries:
+                wl = [[w for w, _ in l] for l in wl]
+                lex = set([w for l in wl for w in l])
+                yield Model(wl, lex, advanced=self.advanced,
+                            **self.kwargs)
         # TODO: else
 
-    def full_model(self):
-        return None
-
+    def freqs(self):
+        for e in self.entries:
+            for l in e[0]:
+                for _, f in l:
+                    yield f
 
 def lex_sentence(l):
     # Convert non-json to json.
@@ -117,6 +148,6 @@ def lex_sentence(l):
 
 
 # mc = ModelConstructor("data/fillers.txt",
-#                       "data/results_fillers_RTs.csv", validity_check=False)
+#                       "data/results_fillers_RTs.csv", advanced=False)
 # mc2 = ModelConstructor("data/target_sentences.txt",
-#                        "data/results_fillers_RTs.csv", validity_check=False)
+#                        "data/results_fillers_RTs.csv", advanced=True)
