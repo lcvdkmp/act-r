@@ -9,14 +9,13 @@ class Model:
     TEXT_MARGIN = (30, 30)
     TEXT_SPACING = (60, 12)
 
-    def __init__(self, gui=True, subsymbolic=False, activation_trace=False,
+    def __init__(self, sentence_list, lexicon, nouns=[], object_indicators=[],
+                 gui=True, subsymbolic=False, activation_trace=False,
                  advanced=True):
         self.gui = gui
 
-        s = ("de professor besprak met geen enkele vriend de nieuwe resultaten"
-             " die periode. hij besprak")
-
-        self.process_sentence_pairs([s])
+        self.sentence_pairs = sentence_list
+        self.lexicon = lexicon
 
         vx = self.env_pos_x_virtual(self.env_size()) + self.TEXT_MARGIN[0]
         vy = 320
@@ -28,6 +27,8 @@ class Model:
         self.stimuli = list(self.stimuli_gen())
         print(self.stimuli)
 
+        self.nouns = nouns
+        self.object_indicators = object_indicators
         # TODO: estimate:
         #       - eye_mvt
         #           half normal sd=0.5
@@ -59,16 +60,6 @@ class Model:
 
         # self.imaginal = self.model.set_goal(name="imaginal")
 
-        self.lexicon = ["de", "besprak", "met", "het", "onderzoeksvoorstel",
-                        "die", "periode", "geen", "nieuwe",
-                        "resultaten", "van", "periode", "een"]
-
-        self.nouns = [("professor", "masc"), ("vriend", "masc")]
-
-        self.object_indicators = ["enkele"]
-
-        self.back_reference_objects = [("hij", "masc"), ("zij", "fem")]
-
         actr.chunktype("word", "form, cat")
         actr.chunktype("noun", "form, cat, gender")
         # actr.chunktype("read_word", "word, use, gender")
@@ -86,7 +77,7 @@ class Model:
 
         self.chunks += [actr.makechunk(typename="noun", nameofchunk=n, form=n,
                                        cat="noun", gender=g)
-                        for (n, g) in self.nouns + self.back_reference_objects]
+                        for (n, g) in self.nouns]
 
         for c in self.chunks:
             for _ in range(0, self.freq(c.form)):
@@ -591,12 +582,6 @@ class Model:
 
     def freq(self, _):
         return 1000
-
-    def process_sentence_pairs(self, l):
-        self.sentence_pairs = []
-        for s in l:
-            st = map(str.strip, s.split("."))
-            self.sentence_pairs += [list(map(lambda x: x.split(" "), st))]
 
     def stimuli_gen(self):
         for s in self.sentence_pairs:

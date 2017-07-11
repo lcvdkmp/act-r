@@ -1,6 +1,14 @@
 from model import Model
 
 import argparse
+
+
+def process_sentence_pairs(l):
+    for s in l:
+        st = map(str.strip, s.split("."))
+        yield list(map(lambda x: x.split(" "), st))
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--dry-run", help="Don't run the model",
                     action="store_true")
@@ -31,7 +39,24 @@ parser.add_argument("-b", "--basic-mode",
 
 args = parser.parse_args()
 
-m = Model(gui=args.gui, subsymbolic=args.subsymbolic,
+s = [("de professor besprak met geen enkele vriend de nieuwe resultaten"
+     " die periode. hij besprak")]
+
+sl = list(process_sentence_pairs(s))
+
+lex = ["de", "besprak", "met", "het", "onderzoeksvoorstel",
+       "die", "periode", "geen", "nieuwe",
+       "resultaten", "van", "periode", "een"]
+nouns = [("professor", "masc"), ("vriend", "masc")]
+
+object_indicators = ["enkele"]
+
+back_reference_objects = [("hij", "masc"), ("zij", "fem")]
+
+print(sl)
+m = Model(sl, lex, nouns=nouns + back_reference_objects,
+          object_indicators=object_indicators,
+          gui=args.gui, subsymbolic=args.subsymbolic,
           activation_trace=args.activation_trace,
           advanced=not args.basic_mode)
 sim = m.sim()

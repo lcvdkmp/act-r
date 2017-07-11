@@ -9,9 +9,9 @@ def format_word(w):
 
 class ModelConstructor():
     def __init__(self, sentence_filepath,
-                 word_freq_csv, validity_check=True):
+                 word_freq_csv, advanced=True):
         self.entrances = []
-        self.read_sentences(sentence_filepath, validity_check)
+        self.read_sentences(sentence_filepath, not advanced)
         print("Entrances successfully parsed: {}/{}"
               .format(len(self.entrances), self.num_total_entrances))
 
@@ -79,6 +79,17 @@ class ModelConstructor():
             raise Exception("Missing frequency information for:"
                             "{}".format(ist))
 
+    def model_generator(self):
+        if advanced:
+            for wl, _ in self.entrances:
+                m = Model()
+                
+
+        # TODO: else
+
+    def full_model(self):
+        return None
+
 
 def lex_sentence(l):
     # Convert non-json to json.
@@ -105,7 +116,7 @@ def lex_sentence(l):
     return (s, nl)
 
 
-mc = ModelConstructor("data/fillers.txt",
-                      "data/results_fillers_RTs.csv", validity_check=False)
+# mc = ModelConstructor("data/fillers.txt",
+#                       "data/results_fillers_RTs.csv", validity_check=False)
 # mc2 = ModelConstructor("data/target_sentences.txt",
 #                        "data/results_fillers_RTs.csv", validity_check=False)
