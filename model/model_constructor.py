@@ -18,11 +18,13 @@ class ModelConstructor():
         self.entries = []
         self.advanced = advanced
         self.read_sentences(sentence_filepath, self.advanced)
+
         print("entries successfully parsed: {}/{}"
               .format(len(self.entries), self.num_total_entries))
 
         self.parse_freq_csv(word_freq_csv)
         print("All frequency information found")
+        self.entries = [self.entries[0]]
 
     def read_sentences(self, fn, vc):
         # TODO: also retrieve second sentence
@@ -90,8 +92,10 @@ class ModelConstructor():
                 if self.entries[eh][0][nh][sh] != format_word(r['Word']):
                     print("skipping {}".format(format_word(r['Word'])))
                     continue
+
+                # Miliseconds to seconds
                 self.entries[eh][0][nh][sh] = (self.entries[eh][0][nh][sh],
-                                               r['RT'])
+                                               float(r['RT'] / 1000))
                 sh += 1
                 if sh == len(self.entries[eh][0][nh]):
                     if nh == 0:
@@ -107,13 +111,13 @@ class ModelConstructor():
 
             # self.freqs = {format_word(r['Word']): r['RT'] for r in reader}
 
-    def model_generator(self):
+    def model_generator(self, **kwargs):
         if not self.advanced:
             for wl, nl in self.entries:
                 wl = [[w for w, _ in l] for l in wl]
                 lex = set([w for l in wl for w in l])
-                yield Model(wl, lex, advanced=self.advanced,
-                            **self.kwargs)
+                yield Model([wl], lex, advanced=self.advanced,
+                            **self.kwargs, model_params=kwargs)
         # TODO: else
 
     def freqs(self):

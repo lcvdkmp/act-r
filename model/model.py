@@ -1,5 +1,4 @@
 import pyactr as actr
-import random
 
 # Store subject in goal
 # Context activation
@@ -13,9 +12,21 @@ class Model:
     TEXT_MARGIN = (30, 30)
     TEXT_SPACING = (60, 12)
 
-    def __init__(self, sentence_list, lexicon, nouns=[], object_indicators=[],
-                 gui=True, subsymbolic=False, activation_trace=False,
-                 advanced=True):
+    def __init__(self, sentence_list, lexicon, nouns=None,
+                 object_indicators=None,
+                 gui=True, subsymbolic=False, activation_trace=True,
+                 advanced=True, model_params=None):
+
+        if nouns is None:
+            nouns = []
+        if object_indicators is None:
+            object_indicators = []
+        if model_params is None:
+            model_params = {}
+        for k, v in model_params.items():
+            model_params[k] = float(v)
+        print(model_params)
+
         self.gui = gui
 
         self.sentence_pairs = sentence_list
@@ -31,13 +42,6 @@ class Model:
         self.stimuli = list(self.stimuli_gen())
         self.nouns = nouns
         self.object_indicators = object_indicators
-        # TODO: estimate:
-        #       - eye_mvt
-        #           half normal sd=0.5
-        #       - eye_map
-        #           gamma as=0.7
-        #       - rule_firing (with and without)
-        #           half normal sd=0.5
 
         if subsymbolic:
             self.model = actr.ACTRModel(environment=self.environment,
@@ -50,15 +54,18 @@ class Model:
                                         # latency_factor=0.45,
                                         # latency_exponent=0.28,
                                         # decay=0.095,
-                                        motor_prepared=True
+                                        motor_prepared=True,
+                                        **model_params
                                         # eye_mvt_scaling_parameter=0.23)
                                         )
         else:
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
-                                        eye_mvt_scaling_parameter=0.23,
+                                        # eye_mvt_scaling_parameter=0.23,
                                         motor_prepared=True,
-                                        emma_noise=False)
+                                        emma_noise=False,
+                                        **model_params
+                                        )
 
         # self.imaginal = self.model.set_goal(name="imaginal")
 
@@ -85,7 +92,7 @@ class Model:
             # for _ in range(0, self.freq(c.form)):
             #     self.model.decmem.add(c, time=random.randint(-self.NSEC_IN_YEAR
             #                                                  * 15, 0))
-            self.model.decmem.add(c)
+            self.model.decmem.add(c, time=0)
 
         actr.chunktype("goal", ("state, expecting_object,"
                                 "first_word_attended, subject_attended,"
@@ -130,6 +137,7 @@ class Model:
             =g>
             isa goal
             state 'start'
+            ~visual>
         """)
 
         # XXX: might not be realistic.
@@ -141,8 +149,6 @@ class Model:
             =g>
             isa goal
             state 'encoding'
-            ?visual>
-            state free
             =visual>
             isa _visual
             value None
@@ -150,6 +156,7 @@ class Model:
             =g>
             isa goal
             state 'start'
+            ~visual>
         """)
 
         self.model.productionstring(name="no lexeme found", string="""
@@ -161,7 +168,7 @@ class Model:
             ==>
             =g>
             isa goal
-            state 'start'
+            state 'stop'
             ~retrieval>
         """)
 

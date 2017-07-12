@@ -54,7 +54,6 @@ object_indicators = ["enkele"]
 
 back_reference_objects = [("hij", "masc"), ("zij", "fem")]
 
-print(sl)
 m = Model(sl, lex, nouns=nouns + back_reference_objects,
           object_indicators=object_indicators,
           gui=args.gui, subsymbolic=args.subsymbolic,
