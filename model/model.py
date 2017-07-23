@@ -31,15 +31,14 @@ class Model:
 
         self.sentence_pairs = sentence_list
         self.lexicon = lexicon
-
         vx = self.env_pos_x_virtual(self.env_size()) + self.TEXT_MARGIN[0]
         vy = 320
 
         # Set initial focus on the first word
         self.environment = actr.Environment(focus_position=self.TEXT_MARGIN,
                                             size=(vx, vy))
-
         self.stimuli = list(self.stimuli_gen())
+
         self.nouns = nouns
         self.object_indicators = object_indicators
 
@@ -51,10 +50,11 @@ class Model:
                                         subsymbolic=True,
                                         # retrieval_threshold=0.92,
                                         # instantaneous_noise=1.77,
-                                        # latency_factor=0.45,
-                                        # latency_exponent=0.28,
+                                        latency_factor=0.8,
+                                        latency_exponent=2,
                                         # decay=0.095,
                                         motor_prepared=True,
+                                        retrieval_threshold=-10,
                                         **model_params
                                         # eye_mvt_scaling_parameter=0.23)
                                         )
@@ -90,7 +90,8 @@ class Model:
 
         for c in self.chunks:
             # for _ in range(0, self.freq(c.form)):
-            #     self.model.decmem.add(c, time=random.randint(-self.NSEC_IN_YEAR
+            #     self.model.decmem.add(c,
+            #                           time=random.randint(-self.NSEC_IN_YEAR
             #                                                  * 15, 0))
             self.model.decmem.add(c, time=0)
 
@@ -105,7 +106,7 @@ class Model:
                                            in_second_sentence=False))
 
         self.model.visualBuffer("visual", "visual_location", self.model.decmem,
-                                finst=5)
+                                finst=20)
 
         # Find a word on the screen
         self.model.productionstring(name="find word", string="""
@@ -159,6 +160,20 @@ class Model:
             ~visual>
         """)
 
+        self.model.productionstring(name="recover from lost word 2", string="""
+            =g>
+            isa goal
+            state 'encoding'
+            ?visual>
+            buffer empty
+            state free
+            ==>
+            =g>
+            isa goal
+            state 'start'
+            ~visual>
+        """)
+
         self.model.productionstring(name="no lexeme found", string="""
             =g >
             isa goal
@@ -196,6 +211,21 @@ class Model:
             screen_pos =visual_location
             ~visual_location>
         """)
+
+        # self.model.productionstring(name="recover 2", string="""
+        #     =g>
+        #     isa goal
+        #     state 'attend'
+        #     ?visual_location>
+        #     buffer empty
+        #     ==>
+        #     =g>
+        #     isa goal
+        #     state 'start'
+        #     ~visual>
+        #     ~visual_location>
+        #     ~retrieval>
+        # """)
 
         self.model.productionstring(name="recalling", string="""
             =g>

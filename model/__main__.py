@@ -40,8 +40,8 @@ parser.add_argument("-b", "--basic-mode",
 
 args = parser.parse_args()
 
-s = [("de professor besprak met geen enkele vriend de nieuwe resultaten"
-     " die periode. hij besprak")]
+s = [("de professor besprak. hij")]
+# s = [("besprak de de de met met met met professor. professor")]
 
 sl = list(process_sentence_pairs(s))
 
@@ -60,6 +60,9 @@ m = Model(sl, lex, nouns=nouns + back_reference_objects,
           activation_trace=args.activation_trace,
           advanced=not args.basic_mode)
 sim = m.sim()
+
+print(m.model.decmem)
+
 if not args.dry_run and not args.filters and not args.diff_formatted:
     sim.run()
 elif args.filters:
