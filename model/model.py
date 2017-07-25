@@ -14,7 +14,7 @@ class Model:
 
     def __init__(self, sentence_list, lexicon, nouns=None,
                  object_indicators=None,
-                 gui=True, subsymbolic=False, activation_trace=True,
+                 gui=True, subsymbolic=False, activation_trace=False,
                  advanced=True, model_params=None):
 
         if nouns is None:
@@ -25,7 +25,9 @@ class Model:
             model_params = {}
         for k, v in model_params.items():
             model_params[k] = float(v)
-        print(model_params)
+
+        self.model_params = model_params
+        # print(model_params)
 
         self.gui = gui
 
@@ -34,10 +36,15 @@ class Model:
         vx = self.env_pos_x_virtual(self.env_size()) + self.TEXT_MARGIN[0]
         vy = 320
 
+        # XXX: for now we don't do this. Causes a bug where first word is read
+        # twice
         # Set initial focus on the first word
-        self.environment = actr.Environment(focus_position=self.TEXT_MARGIN,
+        # self.environment = actr.Environment(focus_position=self.TEXT_MARGIN,
+        #                                     size=(vx, vy))
+        self.environment = actr.Environment(focus_position=(0, 0),
                                             size=(vx, vy))
-        self.stimuli = list(self.stimuli_gen())
+        self.stimuli = list(self.stimuli_gen()) + [{}]
+        # print(self.lexicon)
 
         self.nouns = nouns
         self.object_indicators = object_indicators
@@ -50,8 +57,8 @@ class Model:
                                         subsymbolic=True,
                                         # retrieval_threshold=0.92,
                                         # instantaneous_noise=1.77,
-                                        latency_factor=0.8,
-                                        latency_exponent=2,
+                                        # latency_factor=0.8,
+                                        # latency_exponent=2,
                                         # decay=0.095,
                                         motor_prepared=True,
                                         retrieval_threshold=-10,
@@ -59,6 +66,7 @@ class Model:
                                         # eye_mvt_scaling_parameter=0.23)
                                         )
         else:
+            raise Exception()
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
                                         # eye_mvt_scaling_parameter=0.23,
@@ -93,7 +101,7 @@ class Model:
             #     self.model.decmem.add(c,
             #                           time=random.randint(-self.NSEC_IN_YEAR
             #                                                  * 15, 0))
-            self.model.decmem.add(c, time=0)
+            self.model.decmem.add(c)
 
         actr.chunktype("goal", ("state, expecting_object,"
                                 "first_word_attended, subject_attended,"
@@ -139,6 +147,8 @@ class Model:
             isa goal
             state 'start'
             ~visual>
+            ~visual_location>
+            ~retrieval>
         """)
 
         # XXX: might not be realistic.
@@ -158,6 +168,8 @@ class Model:
             isa goal
             state 'start'
             ~visual>
+            ~visual_location>
+            ~retrieval>
         """)
 
         self.model.productionstring(name="recover from lost word 2", string="""
@@ -172,6 +184,8 @@ class Model:
             isa goal
             state 'start'
             ~visual>
+            ~visual_location>
+            ~retrieval>
         """)
 
         self.model.productionstring(name="no lexeme found", string="""
@@ -233,6 +247,8 @@ class Model:
             state 'encoding'
             ?visual>
             buffer full
+            ?retrieval>
+            state free
             =visual>
             isa _visual
             value =val

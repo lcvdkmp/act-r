@@ -24,7 +24,7 @@ class ModelConstructor():
 
         self.parse_freq_csv(word_freq_csv)
         print("All frequency information found")
-        self.entries = [self.entries[0]]
+        # self.entries = [self.entries[0]]
 
     def read_sentences(self, fn, vc):
         # TODO: also retrieve second sentence
@@ -95,7 +95,7 @@ class ModelConstructor():
 
                 # Miliseconds to seconds
                 self.entries[eh][0][nh][sh] = (self.entries[eh][0][nh][sh],
-                                               float(r['RT']) / 1000)
+                                               float(r['RT']))
                 sh += 1
                 if sh == len(self.entries[eh][0][nh]):
                     if nh == 0:

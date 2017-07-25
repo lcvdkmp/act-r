@@ -5,8 +5,13 @@ NEW:
 Find a way to retrieve something with either 
 role subject or role object
 
-Use both first and second sentence??
-
 Train model on data
 
 Use the dataset of words for subsymbolic
+
+Store subject and object in goal buffer (different type? just like normal
+		parsing. We can then retrieve chunks of this type when recalling.
+		preventing recalls of declarative memory)
+Set spreading stuff for goal buffer so that retrieval time is quicker
+
+
