@@ -2,7 +2,6 @@ import pyactr as actr
 
 # Store subject in goal
 # Context activation
-# Enable subsymbolic
 
 
 class Model:
@@ -27,7 +26,6 @@ class Model:
             model_params[k] = float(v)
 
         self.model_params = model_params
-        # print(model_params)
 
         self.gui = gui
 
@@ -43,8 +41,11 @@ class Model:
         #                                     size=(vx, vy))
         self.environment = actr.Environment(focus_position=(0, 0),
                                             size=(vx, vy))
+
+        # Note the added empty dict. This causes the last word to dissapear
+        # after the last space press, kind of solving a bug where the last
+        # word is read twice in some specific cases.
         self.stimuli = list(self.stimuli_gen()) + [{}]
-        # print(self.lexicon)
 
         self.nouns = nouns
         self.object_indicators = object_indicators
@@ -55,27 +56,18 @@ class Model:
                                         activation_trace=activation_trace,
                                         emma_noise=False,
                                         subsymbolic=True,
-                                        # retrieval_threshold=0.92,
-                                        # instantaneous_noise=1.77,
-                                        # latency_factor=0.8,
-                                        # latency_exponent=2,
-                                        # decay=0.095,
                                         motor_prepared=True,
                                         retrieval_threshold=-10,
                                         **model_params
-                                        # eye_mvt_scaling_parameter=0.23)
                                         )
         else:
             raise Exception()
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
-                                        # eye_mvt_scaling_parameter=0.23,
                                         motor_prepared=True,
                                         emma_noise=False,
                                         **model_params
                                         )
-
-        # self.imaginal = self.model.set_goal(name="imaginal")
 
         actr.chunktype("word", "form, cat")
         actr.chunktype("noun", "form, cat, gender")
@@ -97,10 +89,6 @@ class Model:
                         for (n, g) in self.nouns]
 
         for c in self.chunks:
-            # for _ in range(0, self.freq(c.form)):
-            #     self.model.decmem.add(c,
-            #                           time=random.randint(-self.NSEC_IN_YEAR
-            #                                                  * 15, 0))
             self.model.decmem.add(c)
 
         actr.chunktype("goal", ("state, expecting_object,"
@@ -225,21 +213,6 @@ class Model:
             screen_pos =visual_location
             ~visual_location>
         """)
-
-        # self.model.productionstring(name="recover 2", string="""
-        #     =g>
-        #     isa goal
-        #     state 'attend'
-        #     ?visual_location>
-        #     buffer empty
-        #     ==>
-        #     =g>
-        #     isa goal
-        #     state 'start'
-        #     ~visual>
-        #     ~visual_location>
-        #     ~retrieval>
-        # """)
 
         self.model.productionstring(name="recalling", string="""
             =g>

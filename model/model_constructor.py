@@ -95,7 +95,7 @@ class ModelConstructor():
 
                 # Miliseconds to seconds
                 self.entries[eh][0][nh][sh] = (self.entries[eh][0][nh][sh],
-                                               float(r['RT']))
+                                               float(r['RT']) / 1000)
                 sh += 1
                 if sh == len(self.entries[eh][0][nh]):
                     if nh == 0:
