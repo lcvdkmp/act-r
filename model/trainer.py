@@ -9,6 +9,8 @@ import scipy
 import matplotlib.pyplot as plt
 import functools
 
+import pandas as pd
+
 #       - eye_mvt
 #           half normal sd=0.5
 #       - eye_map
@@ -31,9 +33,11 @@ def run_and_log(sim, fn):
 class Trainer():
 
     param_distributions = {
-        "eye_mvt_scaling_parameter": (pymc3.HalfNormal, {"sd": 0.5}),
-        "eye_mvt_angle_parameter": (pymc3.Gamma, {"alpha": 1, "beta": 3}),
-        "sigma": (pymc3.HalfNormal, {"sd": 1.0})
+        "eye_mvt_scaling_parameter": (pymc3.HalfNormal, {"sd": 0.2}),
+        "eye_mvt_angle_parameter":   (pymc3.Gamma, {"alpha": 1, "beta": 3}),
+        "sigma":                     (pymc3.HalfNormal, {"sd": 1.0}),
+        "rule_firing":               (pymc3.Uniform, {"lower": 0.022,
+                                                      "upper": 0.1})
     }
 
     def __init__(self, sentence_filepath, word_freq_filepath, model_args={}):
@@ -43,20 +47,46 @@ class Trainer():
                                                   advanced=False,
                                                   **model_args)
 
-        self.mode = "eye_only"
+        self.mode = "full"
         self.counter = [0, 0]
         self.inspect_number = [-1, 0]
 
         self.eye_only_results = {'eye_mvt': np.exp(-8.814191179269775),
                                  'eye_map': np.exp(-2.302589265832653)}
 
+        self.results = {'eye_mvt_scaling_parameter': 0.002200098239712775,
+                        'eye_mvt_angle_parameter': 0.41134056484219267,
+                        'rule_firing': 0.060418825445918777}
+
+        # The maximum value any parameter can have in order for the model to
+        # still work. This is a very rough lower bound
+        self.max_param = 100
+
     def params_to_train(self):
+        """
+        Returns:
+            A list of parameter names that should be trained in the
+            current trainer mode
+        """
         params = {"eye_only": ["eye_mvt_scaling_parameter",
-                               "eye_mvt_angle_parameter"]}
+                               "eye_mvt_angle_parameter"],
+                  "full": ["eye_mvt_scaling_parameter",
+                           "eye_mvt_angle_parameter",
+                           "rule_firing"]}
 
         return params[self.mode]
 
     def create_distr(self, name):
+        """
+        Given a parameter name, create the pymc3 distribution for this
+        parameter.
+
+        Arguments:
+            name: the name of the parameter.
+
+        Returns:
+            A pymc3 distribution.
+        """
         p = self.param_distributions[name]
         return p[0](name, **p[1])
 
@@ -64,6 +94,20 @@ class Trainer():
         return np.array(list(self.model_constructor.freqs()))
 
     def measure(self, gen, verbose=False):
+        """
+        Given a model generator, measure space key press delta time.
+        If self.inspect_number is specified, measure will log and simulate the
+        inspect_number[0]-th model on the inspect_number[1]-th sentence with
+        gui.
+
+        Arguments:
+            gen: a generator yielding models to measure.
+            verbose: If true, information is printed to stdout.
+
+        Returns:
+            a numpy array containting the delta measures of each model yielded
+            by gen.
+        """
         measures = []
         printed_params = not verbose
         for m in gen:
@@ -95,6 +139,12 @@ class Trainer():
         return np.array(measures)
 
     def train(self, verbose=False):
+        """
+        Estimate the specified parameters.
+
+        Arguments:
+            verbose: When true, verbosely print info to stdout.
+        """
 
         def generic_reading_measure(param_list, *params):
             # Construct kwargs from param_list and provided parameters
@@ -103,6 +153,12 @@ class Trainer():
                                 "list and parameters for "
                                 "generic_reading_measure")
             kwargs = dict(zip(param_list, params))
+
+            # Return really bad results when max_param is exceded. We assume we
+            # cannot run a model with a parameter exceeding max_param
+            if True in [x > self.max_param for x in params]:
+                return np.full(len(Y), float("inf"))
+
             gen = self.model_constructor.model_generator(**kwargs)
             m = self.measure(gen, verbose=verbose)
             if verbose:
@@ -120,15 +176,27 @@ class Trainer():
         # or could be intended behaviour. Either way, theano needs a __name__
         fn.__name__ = generic_reading_measure.__name__
 
+        # # Theano also requires a __module__ for the op if multithreading is used.
+        # print(generic_reading_measure.__module__)
+        # fn.__module__ = "model"
+
         theano_op = FromFunctionOp(fn, [T.dscalar] * len(param_name_list),
                                    [T.dvector], None)
 
         with self.mc_model:
+
             mu = theano_op(*[self.create_distr(x) for x in param_name_list])
             pymc3.Normal("Y_obs", mu=mu, sd=self.create_distr("sigma"),
                          observed=Y)
+
             # step = pymc3.Slice(self.mc_model.vars)
-            # trace = pymc3.sample(500, step, njobs=1, init='MAP')
+            # trace = pymc3.sample(800, step, njobs=1, init='MAP')
+            # traceframe = pd.DataFrame.from_dict({name: trace[name] for name in
+            #                                      [param_name_list] +
+            #                                      ["sigma"]})
+            # print(traceframe)
+            # traceframe.to_csv("output_parametersearch.csv", sep=",",
+            #                   encoding="utf-8")
             # pymc3.summary(trace)
 
         map_est = pymc3.find_MAP(model=self.mc_model,
@@ -137,6 +205,17 @@ class Trainer():
         print(map_est)
 
     def sim_event_dt(self, sim, event):
+        """
+        Run a pyactr simulation and measure the time between certain events.
+
+        Arguments:
+            sim: The simulation to run.
+            event: The event of which delta time is measured.
+
+        Returns:
+            Yields delta time between events matching event
+        """
+
         t = sim.show_time()
         while True:
             try:
@@ -154,9 +233,7 @@ class Trainer():
 
     def plot_results(self):
         o = t.observed_measures()
-        r = t.collect_results(
-            eye_mvt_scaling_parameter=t.eye_only_results['eye_mvt'],
-            eye_mvt_angle_parameter=t.eye_only_results['eye_map'])
+        r = t.collect_results(**self.results)
 
         # bw = 0.35
         x = np.arange(len(o))
@@ -172,14 +249,13 @@ if __name__ == "__main__":
     model_args = {"gui": True, "subsymbolic": True}
     t = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
                 model_args=model_args)
-    # print(t.reading_measure(1, 1, 1))
-    t.train(verbose=True)
-    # r = t.collect_results(
-    #     eye_mvt_scaling_parameter=t.eye_only_results['eye_mvt'],
-    #     eye_mvt_angle_parameter=t.eye_only_results['eye_map'])
-    # # print(t.observed_measures())
-    # print(np.max(np.abs(r - t.observed_measures())))
+
+    t.train(verbose=False)
+
+    # r = t.collect_results(**t.results)
+    # print(t.observed_measures())
+    # print(r)
+    # print("Max error fo {}".format(np.max(np.abs(r - t.observed_measures()))))
     # print("Mean error of {}.".format(np.mean(np.abs(r -
     #                                                 t.observed_measures()))))
-    # print(r)
     # t.plot_results()

@@ -133,9 +133,7 @@ class Model:
             ==>
             =g>
             isa goal
-            state 'start'
-            ~visual>
-            ~visual_location>
+            state 'attend'
             ~retrieval>
         """)
 
@@ -157,8 +155,8 @@ class Model:
             state 'start'
             ~visual>
             ~visual_location>
-            ~retrieval>
         """)
+        # ~retrieval>
 
         self.model.productionstring(name="recover from lost word 2", string="""
             =g>
@@ -173,8 +171,8 @@ class Model:
             state 'start'
             ~visual>
             ~visual_location>
-            ~retrieval>
         """)
+        # ~retrieval>
 
         self.model.productionstring(name="no lexeme found", string="""
             =g >
@@ -211,7 +209,6 @@ class Model:
             isa _visual
             cmd move_attention
             screen_pos =visual_location
-            ~visual_location>
         """)
 
         self.model.productionstring(name="recalling", string="""
@@ -235,6 +232,7 @@ class Model:
             isa word
             form =val
             ~visual>
+            ~visual_location>
         """)
 
         self.model.productionstring(name="lexeme retrieved", string="""
@@ -282,8 +280,8 @@ class Model:
             isa _visual
             cmd move_attention
             screen_pos =visual_location
-            ~visual_location>
         """.format(self.TEXT_MARGIN[0]))
+        # ~visual_location>
 
         self.model.productionstring(name="attend word (first sentence - reset state)", string="""
             =g>
@@ -307,8 +305,8 @@ class Model:
             isa _visual
             cmd move_attention
             screen_pos =visual_location
-            ~visual_location>
         """.format(self.TEXT_MARGIN[0]))
+        # ~visual_location>
 
         self.model.productionstring(name="attend word (second sentence)", string="""
             =g>
@@ -328,8 +326,8 @@ class Model:
             isa _visual
             cmd move_attention
             screen_pos =visual_location
-            ~visual_location>
         """.format(self.TEXT_MARGIN[0]))
+        # ~visual_location>
 
         # Recall the first word.
         # This is a special case because we want this to set the
@@ -357,6 +355,7 @@ class Model:
             isa word
             form =val
             ~visual>
+            ~visual_location>
         """)
 
         # Recall an object. An object is expected because an object indicator
@@ -381,6 +380,7 @@ class Model:
             isa noun
             form =val
             ~visual>
+            ~visual_location>
         """)
 
         # Recall a subject. A subject is expected because the first word has
@@ -407,6 +407,7 @@ class Model:
             isa noun
             form =val
             ~visual>
+            ~visual_location>
         """)
 
         # A normal word recall that should be fired if no other recall can be
@@ -433,6 +434,7 @@ class Model:
             isa word
             form =val
             ~visual>
+            ~visual_location>
         """)
 
         # TODO: could replace the cat ~ stuf with cat word if word is the only
@@ -661,6 +663,10 @@ class Model:
         return max(map(lambda x: max(map(len, x)), self.sentence_pairs))
 
     def env_pos_x_virtual(self, p):
+        """
+        Calculate the x position of the p'th word as if given an infinite
+        environment.
+        """
         return self.TEXT_MARGIN[0] + self.TEXT_SPACING[0] * p
 
     def env_pos(self, p):
