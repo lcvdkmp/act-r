@@ -9,17 +9,16 @@ import scipy
 import matplotlib.pyplot as plt
 import functools
 
-import pandas as pd
+from measurer import Measurer, EventMeasurer
 
-#       - eye_mvt
-#           half normal sd=0.5
-#       - eye_map
-#           gamma as=0.7
-#       - rule_firing (with and without)
-#           half normal sd=0.5
+# import pandas as pd
+
+# XXX: estimate only case: mismatch - match
+# without spreading
+# add intercept
 
 
-def run_and_log(sim, fn):
+def run_and_log(sim, fn="output"):
     with open(fn, "w") as f:
         while True:
             try:
@@ -33,14 +32,22 @@ def run_and_log(sim, fn):
 class Trainer():
 
     param_distributions = {
-        "eye_mvt_scaling_parameter": (pymc3.HalfNormal, {"sd": 0.2}),
-        "eye_mvt_angle_parameter":   (pymc3.Gamma, {"alpha": 1, "beta": 3}),
-        "sigma":                     (pymc3.HalfNormal, {"sd": 1.0}),
+        "eye_mvt_scaling_parameter": (pymc3.HalfNormal, {"sd": 1.0}),
+        "eye_mvt_angle_parameter":   (pymc3.Gamma, {"alpha": 1.3, "beta": 2}),
         "rule_firing":               (pymc3.Uniform, {"lower": 0.022,
-                                                      "upper": 0.1})
+                                                      "upper": 0.1}),
+        "sigma":                     (pymc3.HalfNormal, {"sd": 0.5}),
+
+
+        # "intercept":                 (pymc3.Uniform, {"lower": 0.1,
+        #                                              "upper": 0.4})
+        # XXX: estimate latency_factor, latency_exponent
+        # "latency_factor" :           (pymc3.Gamma, {"alpha": 2, "beta": 6})
+        # "latency_exponent" :         (pymc3.HalfNormal, {"sd": 0.5})
     }
 
-    def __init__(self, sentence_filepath, word_freq_filepath, model_args={}):
+    def __init__(self, sentence_filepath, word_freq_filepath, model_args={},
+                 verbose=False):
         self.mc_model = pymc3.Model()
         self.model_constructor = ModelConstructor(sentence_filepath,
                                                   word_freq_filepath,
@@ -48,19 +55,30 @@ class Trainer():
                                                   **model_args)
 
         self.mode = "full"
-        self.counter = [0, 0]
-        self.inspect_number = [-1, 0]
 
         self.eye_only_results = {'eye_mvt': np.exp(-8.814191179269775),
                                  'eye_map': np.exp(-2.302589265832653)}
 
-        self.results = {'eye_mvt_scaling_parameter': 0.002200098239712775,
-                        'eye_mvt_angle_parameter': 0.41134056484219267,
-                        'rule_firing': 0.060418825445918777}
+        # self.results = {'eye_mvt_scaling_parameter': 0.002200098239712775,
+        #                 'eye_mvt_angle_parameter': 0.41134056484219267,
+        #                 'rule_firing': 0.060418825445918777}
+        self.results = {'eye_mvt_scaling_parameter': 0.002377572678935413,
+                        'eye_mvt_angle_parameter': 0.8539963243897579,
+                        'rule_firing': 0.05995633050087895}
 
         # The maximum value any parameter can have in order for the model to
         # still work. This is a very rough lower bound
         self.max_param = 100
+
+        self.verbose = verbose
+        self.measurer = EventMeasurer("KEY PRESSED: SPACE", verbose)
+
+        # NOTE: you can inspect a certain simulation iteration of the training
+        # procedure in the following way:
+
+        # self.measurer.add_callback((0, 2), lambda x: x.run())
+        # ln = "log_0_2.txt"
+        # self.measurer.add_callback((0, 2), functools.partial(run_and_log,
 
     def params_to_train(self):
         """
@@ -93,51 +111,6 @@ class Trainer():
     def observed_measures(self):
         return np.array(list(self.model_constructor.freqs()))
 
-    def measure(self, gen, verbose=False):
-        """
-        Given a model generator, measure space key press delta time.
-        If self.inspect_number is specified, measure will log and simulate the
-        inspect_number[0]-th model on the inspect_number[1]-th sentence with
-        gui.
-
-        Arguments:
-            gen: a generator yielding models to measure.
-            verbose: If true, information is printed to stdout.
-
-        Returns:
-            a numpy array containting the delta measures of each model yielded
-            by gen.
-        """
-        measures = []
-        printed_params = not verbose
-        for m in gen:
-            if not printed_params:
-                print(m.model_params)
-                printed_params = True
-
-            if self.counter == self.inspect_number:
-                sim = m.sim()
-                sim.run()
-                run_and_log(sim, "log_{}.{}.txt".format(self.counter[0],
-                                                        self.counter[1]))
-
-            if verbose:
-                print("*" * 30, "sim {}.{}".format(self.counter[0],
-                                                   self.counter[1]), "*" * 30)
-            self.counter[1] += 1
-            sim = m.sim()
-
-            s = m.sentence_pairs[0][0] + m.sentence_pairs[0][1]
-            dts = list(self.sim_event_dt(sim, "KEY PRESSED: SPACE"))
-            assert(len(dts) == len(s))
-            measures += dts
-
-        if verbose:
-            print("=" * 80)
-        self.counter[0] += 1
-        self.counter[1] = 0
-        return np.array(measures)
-
     def train(self, verbose=False):
         """
         Estimate the specified parameters.
@@ -160,7 +133,7 @@ class Trainer():
                 return np.full(len(Y), float("inf"))
 
             gen = self.model_constructor.model_generator(**kwargs)
-            m = self.measure(gen, verbose=verbose)
+            m = self.measurer.measure(gen)
             if verbose:
                 print(Y - m)
             return m
@@ -176,7 +149,8 @@ class Trainer():
         # or could be intended behaviour. Either way, theano needs a __name__
         fn.__name__ = generic_reading_measure.__name__
 
-        # # Theano also requires a __module__ for the op if multithreading is used.
+        # Theano also requires a __module__ for the op if multithreading is
+        # used.
         # print(generic_reading_measure.__module__)
         # fn.__module__ = "model"
 
@@ -185,6 +159,7 @@ class Trainer():
 
         with self.mc_model:
 
+            # TODO: add case for intercept
             mu = theano_op(*[self.create_distr(x) for x in param_name_list])
             pymc3.Normal("Y_obs", mu=mu, sd=self.create_distr("sigma"),
                          observed=Y)
@@ -204,32 +179,13 @@ class Trainer():
 
         print(map_est)
 
-    def sim_event_dt(self, sim, event):
-        """
-        Run a pyactr simulation and measure the time between certain events.
-
-        Arguments:
-            sim: The simulation to run.
-            event: The event of which delta time is measured.
-
-        Returns:
-            Yields delta time between events matching event
-        """
-
-        t = sim.show_time()
-        while True:
-            try:
-                sim.step()
-            except simpy.core.EmptySchedule:
-                break
-
-            if sim.current_event.action == event:
-                yield (sim.show_time() - t)
-                t = sim.show_time()
-
     def collect_results(self, **params):
-        return self.measure(
+        v = self.measurer.verbose
+        self.measurer.verbose = False
+        m = self.measurer.measure(
             self.model_constructor.model_generator(**params))
+        self.measurer.verbose = v
+        return m
 
     def plot_results(self):
         o = t.observed_measures()
@@ -248,14 +204,14 @@ class Trainer():
 if __name__ == "__main__":
     model_args = {"gui": True, "subsymbolic": True}
     t = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
-                model_args=model_args)
+                model_args=model_args, verbose=True)
 
-    t.train(verbose=False)
+    t.train()
 
-    # r = t.collect_results(**t.results)
-    # print(t.observed_measures())
-    # print(r)
-    # print("Max error fo {}".format(np.max(np.abs(r - t.observed_measures()))))
-    # print("Mean error of {}.".format(np.mean(np.abs(r -
-    #                                                 t.observed_measures()))))
-    # t.plot_results()
+#     r = t.collect_results(**t.results)
+#     # print(t.observed_measures())
+#     print(r - t.observed_measures())
+#     print("Max error fo {}".format(np.max(np.abs(r - t.observed_measures()))))
+#     print("Mean error of {}.".format(np.mean(np.abs(r -
+#                                                     t.observed_measures()))))
+#     t.plot_results()

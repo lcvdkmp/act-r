@@ -61,7 +61,6 @@ class Model:
                                         **model_params
                                         )
         else:
-            raise Exception()
             self.model = actr.ACTRModel(environment=self.environment,
                                         automatic_visual_search=False,
                                         motor_prepared=True,
@@ -94,6 +93,9 @@ class Model:
         actr.chunktype("goal", ("state, expecting_object,"
                                 "first_word_attended, subject_attended,"
                                 "in_second_sentence"))
+
+        # TODO: add `role subject' for spreading to prefer subject over object
+        # (as seen in experiment data)
         self.model.goal.add(actr.makechunk(nameofchunk="start",
                                            typename="goal", state="start",
                                            expecting_object=False,
@@ -488,6 +490,7 @@ class Model:
             expecting_object False
             =retrieval>
             role object
+            status parsed
             +manual>
             isa _manual
             cmd press_key
@@ -515,6 +518,7 @@ class Model:
             subject_attended True
             =retrieval>
             role subject
+            status parsed
             +manual>
             isa _manual
             cmd press_key
@@ -546,8 +550,7 @@ class Model:
             +retrieval>
             isa noun
             gender =gd
-            role subject
-            role object
+            status parsed
             ~retrieval>
         """)
 
@@ -689,10 +692,6 @@ class Model:
         return {'text': '___', 'position': self.env_pos(p), 'vis_delay': 3}
 
     def sim(self):
-        # The simulation requires a dictionary for some reason...
-        # w = dict(enumerate(self.sentence_to_stimuli(s)))
-        # print(w)
-
         # If gui is set to False, the simulation only runs for at most 1
         # second. Setting realtime to False and gui to True results in the
         # expected effect when no gui is desired.
@@ -704,7 +703,7 @@ class Model:
             triggers=['space'],
             # Set the timeout to something big enough so that timeout will
             # hopefully never trigger. The stimuli should always be cycled by
-            # the triggers instead.
+            # the triggers.
             times=1000)
         return sim
 

@@ -39,8 +39,8 @@ parser.add_argument("-b", "--basic-mode",
 
 args = parser.parse_args()
 
-s = [("de professor besprak. hij")]
-# s = [("besprak de de de met met met met professor. professor")]
+s = [("de professor besprak met geen enkele vriend de nieuwe resultaten"
+      " die periode. hij besprak")]
 
 sl = list(process_sentence_pairs(s))
 
