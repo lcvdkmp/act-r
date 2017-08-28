@@ -81,3 +81,38 @@ class EventMeasurer(Measurer):
             if sim.current_event.action == event:
                 yield (sim.show_time() - t)
                 t = sim.show_time()
+
+
+class EventIntervalMeasurer(Measurer):
+    def __init__(self, ev1, ev2, verbose=False):
+        self.events = (ev1, ev2)
+        super(Measurer, self)
+        self.verbose = verbose
+
+    def measure_model(self, m):
+        sim = m.sim()
+        return self.sim_event_interval_dt(sim, self.events)
+
+    def sim_event_interval_dt(self, sim, events):
+        while True:
+            times = (None, None)
+            try:
+                sim.step()
+            except simpy.core.EmptySchedule:
+                break
+
+            # Skip ev0s after first ev0 occurred since we are waiting for
+            # an ev1
+            if sim.current_event.action == self.events[0] and \
+                    times[0] is None:
+                times[0] = sim.show_time()
+
+            # We want to record the first occurance of a ev1 after a ev0
+            if sim.current_event.action == self.events[1] and \
+                    times[0] is not None and \
+                    times[1] is None:
+                times[1] = sim.show_time()
+
+            if None in times:
+                raise Exception("proper ev0, ev1 interval did not occur!")
+            return times[1] - times[0]

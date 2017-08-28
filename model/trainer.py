@@ -9,7 +9,7 @@ import scipy
 import matplotlib.pyplot as plt
 import functools
 
-from measurer import Measurer, EventMeasurer
+from measurer import Measurer, EventMeasurer, EventIntervalMeasurer
 
 # import pandas as pd
 
@@ -210,6 +210,13 @@ if __name__ == "__main__":
                             verbose=True)
 
     advanced_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
+
+    advanced_measurer = EventIntervalMeasurer(("RULE SELECTED: lexeme "
+                                               "retrieved (noun): "
+                                               "start reference retrieval"),
+                                              ("RULE FIRED: reference"
+                                               " retrieved"))
+
     advanced_trainer = Trainer("data/target_sentences.csv",
                                "data/pronouns_RTs.csv", advanced_measurer,
                                model_args=model_args, verbose=True)
