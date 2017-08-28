@@ -46,8 +46,8 @@ class Trainer():
         # "latency_exponent" :         (pymc3.HalfNormal, {"sd": 0.5})
     }
 
-    def __init__(self, sentence_filepath, word_freq_filepath, model_args={},
-                 verbose=False):
+    def __init__(self, sentence_filepath, word_freq_filepath, measurer,
+                 model_args={}, verbose=False):
         self.mc_model = pymc3.Model()
         self.model_constructor = ModelConstructor(sentence_filepath,
                                                   word_freq_filepath,
@@ -71,7 +71,7 @@ class Trainer():
         self.max_param = 100
 
         self.verbose = verbose
-        self.measurer = EventMeasurer("KEY PRESSED: SPACE", verbose)
+        self.measurer = measurer
 
         # NOTE: you can inspect a certain simulation iteration of the training
         # procedure in the following way:
@@ -188,8 +188,8 @@ class Trainer():
         return m
 
     def plot_results(self):
-        o = t.observed_measures()
-        r = t.collect_results(**self.results)
+        o = self.observed_measures()
+        r = self.collect_results(**self.results)
 
         # bw = 0.35
         x = np.arange(len(o))
@@ -203,10 +203,16 @@ class Trainer():
 
 if __name__ == "__main__":
     model_args = {"gui": True, "subsymbolic": True}
-    t = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
-                model_args=model_args, verbose=True)
+    basic_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
 
-    t.train()
+    basic_trainer = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
+                            basic_measurer, model_args=model_args,
+                            verbose=True)
+
+    advanced_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
+    advanced_trainer = Trainer("data/target_sentences.csv",
+                               "data/pronouns_RTs.csv", advanced_measurer,
+                               model_args=model_args, verbose=True)
 
 #     r = t.collect_results(**t.results)
 #     # print(t.observed_measures())

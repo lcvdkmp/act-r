@@ -68,8 +68,8 @@ class Model:
                                         **model_params
                                         )
 
-        actr.chunktype("word", "form, cat")
-        actr.chunktype("noun", "form, cat, gender")
+        actr.chunktype("word", "form, cat, role, status")
+        actr.chunktype("noun", "form, cat, role, status, gender")
         # actr.chunktype("read_word", "word, use, gender")
 
         self.chunks = []
@@ -489,6 +489,7 @@ class Model:
             state 'start'
             expecting_object False
             =retrieval>
+            isa noun
             role object
             status parsed
             +manual>
@@ -517,6 +518,7 @@ class Model:
             state 'start'
             subject_attended True
             =retrieval>
+            isa noun
             role subject
             status parsed
             +manual>

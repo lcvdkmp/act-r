@@ -3,14 +3,11 @@ import json
 import csv
 from model import Model
 
-# TODO: entries -> entries
-
 
 def format_word(w):
     return w.strip().replace('.', '').lower()
 
 
-# TODO: support for model parameters
 class ModelConstructor():
     def __init__(self, sentence_filepath,
                  word_freq_csv, advanced=True, **kwargs):
