@@ -15,3 +15,9 @@ Store subject and object in goal buffer (different type? just like normal
 Set spreading stuff for goal buffer so that retrieval time is quicker
 
 
+
+
+
+- Parse nouns_RT file
+- add intersect to trainer
+- set up model correctly (with info on where the noun is ect)

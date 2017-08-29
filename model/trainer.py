@@ -38,26 +38,30 @@ class Trainer():
                                                       "upper": 0.1}),
         "sigma":                     (pymc3.HalfNormal, {"sd": 0.5}),
 
-
-        # "intercept":                 (pymc3.Uniform, {"lower": 0.1,
-        #                                              "upper": 0.4})
+        "intercept":                 (pymc3.Uniform, {"lower": 0.1,
+                                                      "upper": 0.4}),
         # XXX: estimate latency_factor, latency_exponent
-        # "latency_factor" :           (pymc3.Gamma, {"alpha": 2, "beta": 6})
-        # "latency_exponent" :         (pymc3.HalfNormal, {"sd": 0.5})
+        "latency_factor":           (pymc3.Gamma, {"alpha": 2, "beta": 6}),
+        "latency_exponent":         (pymc3.HalfNormal, {"sd": 0.5})
     }
 
     def __init__(self, sentence_filepath, word_freq_filepath, measurer,
-                 model_args={}, verbose=False):
+                 model_args={}, verbose=False, mode="noun"):
+
+        self.mode = mode
+
         self.mc_model = pymc3.Model()
         self.model_constructor = ModelConstructor(sentence_filepath,
                                                   word_freq_filepath,
-                                                  advanced=False,
+                                                  advanced=(self.mode ==
+                                                            "noun"),
+                                                  noun_mode=(self.mode ==
+                                                             "noun"),
                                                   **model_args)
 
-        self.mode = "full"
 
-        self.eye_only_results = {'eye_mvt': np.exp(-8.814191179269775),
-                                 'eye_map': np.exp(-2.302589265832653)}
+        # self.eye_only_results = {'eye_mvt': np.exp(-8.814191179269775),
+        #                          'eye_map': np.exp(-2.302589265832653)}
 
         # self.results = {'eye_mvt_scaling_parameter': 0.002200098239712775,
         #                 'eye_mvt_angle_parameter': 0.41134056484219267,
@@ -90,7 +94,9 @@ class Trainer():
                                "eye_mvt_angle_parameter"],
                   "full": ["eye_mvt_scaling_parameter",
                            "eye_mvt_angle_parameter",
-                           "rule_firing"]}
+                           "rule_firing"],
+                  "noun": ["latency_factor",
+                           "latency_exponent"]}
 
         return params[self.mode]
 
@@ -159,8 +165,10 @@ class Trainer():
 
         with self.mc_model:
 
-            # TODO: add case for intercept
             mu = theano_op(*[self.create_distr(x) for x in param_name_list])
+            if "intercept" in self.param_distributions:
+                mu += self.create_distr("intercept")
+
             pymc3.Normal("Y_obs", mu=mu, sd=self.create_distr("sigma"),
                          observed=Y)
 
@@ -187,9 +195,9 @@ class Trainer():
         self.measurer.verbose = v
         return m
 
-    def plot_results(self):
+    def plot_results(self, **params):
         o = self.observed_measures()
-        r = self.collect_results(**self.results)
+        r = self.collect_results(params)
 
         # bw = 0.35
         x = np.arange(len(o))
@@ -203,11 +211,15 @@ class Trainer():
 
 if __name__ == "__main__":
     model_args = {"gui": True, "subsymbolic": True}
-    basic_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
+    # basic_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
 
-    basic_trainer = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
-                            basic_measurer, model_args=model_args,
-                            verbose=True)
+    # results = {'eye_mvt_scaling_parameter': 0.002377572678935413,
+    #                 'eye_mvt_angle_parameter': 0.8539963243897579,
+    #                 'rule_firing': 0.05995633050087895}
+
+    # basic_trainer = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
+    #                         basic_measurer, model_args=model_args,
+    #                         verbose=True)
 
     advanced_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
 
@@ -217,14 +229,16 @@ if __name__ == "__main__":
                                               ("RULE FIRED: reference"
                                                " retrieved"))
 
-    advanced_trainer = Trainer("data/target_sentences.csv",
+    advanced_trainer = Trainer("data/target_sentences.txt",
                                "data/pronouns_RTs.csv", advanced_measurer,
                                model_args=model_args, verbose=True)
 
-#     r = t.collect_results(**t.results)
+    advanced_trainer.train()
+
+#     r = t.collect_results(**results)
 #     # print(t.observed_measures())
 #     print(r - t.observed_measures())
 #     print("Max error fo {}".format(np.max(np.abs(r - t.observed_measures()))))
 #     print("Mean error of {}.".format(np.mean(np.abs(r -
 #                                                     t.observed_measures()))))
-#     t.plot_results()
+#     t.plot_results(**results)
