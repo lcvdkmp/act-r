@@ -211,12 +211,14 @@ class ModelConstructor():
         else:
             bro = [("hij", "masc"), ("zij", "fem")]
             for wl, nl, ind, t, _, in self.entries:
+                old_nl = nl
                 nl = list(zip(nl, gender(t[1:], wl)))
                 wl = [[w for w in l] for l in wl]
-                lex = set([w for l in wl for w in l]) - (set(nl) | set(ind))
+                lex = set([w for l in wl for w in l]) \
+                    - (set(old_nl) | set(["hij", "zij"]) | set([ind]))
 
                 yield Model([wl], lex, advanced=self.advanced,
-                            object_indicators=ind,
+                            object_indicators=[ind],
                             nouns=nl + bro,
                             **self.kwargs, model_params=kwargs)
 

@@ -593,8 +593,6 @@ class Model:
             =g>
             isa goal
             state 'start'
-            !retrieval>
-            show form
             +manual>
             isa _manual
             cmd press_key

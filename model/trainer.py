@@ -36,19 +36,22 @@ class Trainer():
         "eye_mvt_angle_parameter":   (pymc3.Gamma, {"alpha": 1.3, "beta": 2}),
         "rule_firing":               (pymc3.Uniform, {"lower": 0.022,
                                                       "upper": 0.1}),
+
         "sigma":                     (pymc3.HalfNormal, {"sd": 0.5}),
 
-        "intercept":                 (pymc3.Uniform, {"lower": 0.1,
-                                                      "upper": 0.4}),
+        # "intercept":                 (pymc3.Uniform, {"lower": 0.1,
+        #                                               "upper": 0.4}),
         # XXX: estimate latency_factor, latency_exponent
-        "latency_factor":           (pymc3.Gamma, {"alpha": 2, "beta": 6}),
-        "latency_exponent":         (pymc3.HalfNormal, {"sd": 0.5})
+        # "latency_factor":           (pymc3.Gamma, {"alpha": 2, "beta": 6}),
+        # "latency_exponent":         (pymc3.HalfNormal, {"sd": 0.5})
     }
 
     def __init__(self, sentence_filepath, word_freq_filepath, measurer,
-                 model_args={}, verbose=False, mode="noun"):
+                 model_args={}, verbose=False, mode="noun",
+                 default_param_values=None):
 
         self.mode = mode
+        self.default_param_values = default_param_values
 
         self.mc_model = pymc3.Model()
         self.model_constructor = ModelConstructor(sentence_filepath,
@@ -79,10 +82,9 @@ class Trainer():
 
         # NOTE: you can inspect a certain simulation iteration of the training
         # procedure in the following way:
-
-        # self.measurer.add_callback((0, 2), lambda x: x.run())
+        # self.measurer.add_callback((0, 0), lambda x: x.run())
         # ln = "log_0_2.txt"
-        # self.measurer.add_callback((0, 2), functools.partial(run_and_log,
+        # self.measurer.add_callback((0, 0), functools.partial(run_and_log, fn=ln))
 
     def params_to_train(self):
         """
@@ -96,7 +98,8 @@ class Trainer():
                            "eye_mvt_angle_parameter",
                            "rule_firing"],
                   "noun": ["latency_factor",
-                           "latency_exponent"]}
+                           "latency_exponent",
+                           "intercept"]}
 
         return params[self.mode]
 
@@ -117,14 +120,13 @@ class Trainer():
     def observed_measures(self):
         return np.array(list(self.model_constructor.freqs()))
 
-    def train(self, verbose=False):
+    def train(self):
         """
         Estimate the specified parameters.
 
         Arguments:
             verbose: When true, verbosely print info to stdout.
         """
-
         def generic_reading_measure(param_list, *params):
             # Construct kwargs from param_list and provided parameters
             if len(param_list) != len(params):
@@ -133,20 +135,32 @@ class Trainer():
                                 "generic_reading_measure")
             kwargs = dict(zip(param_list, params))
 
+            try:
+                intercept = kwargs['intercept']
+                del(kwargs['intercept'])
+                print("intercept: {}".format(intercept))
+            except KeyError:
+                intercept = 0
+
+            # Add default parameters when specified
+            # TODO: warn when default_param_values and params_to_train overlap
+            if self.default_param_values:
+                kwargs.update(self.default_param_values)
+
             # Return really bad results when max_param is exceded. We assume we
             # cannot run a model with a parameter exceeding max_param
             if True in [x > self.max_param for x in params]:
                 return np.full(len(Y), float("inf"))
 
             gen = self.model_constructor.model_generator(**kwargs)
-            m = self.measurer.measure(gen)
-            if verbose:
+            m = self.measurer.measure(gen) + intercept
+            if self.verbose:
                 print(Y - m)
             return m
 
         Y = self.observed_measures()
 
-        param_name_list = self.params_to_train()
+        param_name_list = set(self.params_to_train())
         fn = functools.partial(generic_reading_measure, param_name_list)
 
         # Inject __name__ attribute since partial doesn't seem to do this...
@@ -166,8 +180,9 @@ class Trainer():
         with self.mc_model:
 
             mu = theano_op(*[self.create_distr(x) for x in param_name_list])
-            if "intercept" in self.param_distributions:
-                mu += self.create_distr("intercept")
+            # if "intercept" in self.param_distributions:
+            #     intercept = self.create_distr("intercept")
+            #     mu += intercept
 
             pymc3.Normal("Y_obs", mu=mu, sd=self.create_distr("sigma"),
                          observed=Y)
@@ -211,29 +226,29 @@ class Trainer():
 
 if __name__ == "__main__":
     model_args = {"gui": True, "subsymbolic": True}
-    # basic_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
+    results = {'eye_mvt_scaling_parameter': 0.002377572678935413,
+               'eye_mvt_angle_parameter': 0.8539963243897579,
+               'rule_firing': 0.05995633050087895}
+    basic_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
 
-    # results = {'eye_mvt_scaling_parameter': 0.002377572678935413,
-    #                 'eye_mvt_angle_parameter': 0.8539963243897579,
-    #                 'rule_firing': 0.05995633050087895}
+    basic_trainer = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
+                            basic_measurer, model_args=model_args,
+                            verbose=True, mode="full")
 
-    # basic_trainer = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
-    #                         basic_measurer, model_args=model_args,
-    #                         verbose=True)
+    basic_trainer.train()
 
-    advanced_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
+    # advanced_measurer = EventIntervalMeasurer(("RULE SELECTED: lexeme "
+    #                                            "retrieved (noun): "
+    #                                            "start reference retrieval"),
+    #                                           ("RULE FIRED: reference"
+    #                                            " retrieved"), True)
 
-    advanced_measurer = EventIntervalMeasurer(("RULE SELECTED: lexeme "
-                                               "retrieved (noun): "
-                                               "start reference retrieval"),
-                                              ("RULE FIRED: reference"
-                                               " retrieved"))
+    # advanced_trainer = Trainer("data/target_sentences.txt",
+    #                            "data/pronouns_RTs.csv", advanced_measurer,
+    #                            model_args=model_args, verbose=True,
+    #                            default_param_values=results)
 
-    advanced_trainer = Trainer("data/target_sentences.txt",
-                               "data/pronouns_RTs.csv", advanced_measurer,
-                               model_args=model_args, verbose=True)
-
-    advanced_trainer.train()
+    # advanced_trainer.train()
 
 #     r = t.collect_results(**results)
 #     # print(t.observed_measures())

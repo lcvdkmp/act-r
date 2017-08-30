@@ -1,0 +1,6 @@
+mis match
+'intercept_interval__': array(-1.645204853962308), 'latency_factor_log__': array(-2.602170510123743), 'latency_exponent_log__': array(-0.9465849873024705), 'sigma_log__': array(-2.3618748127941203)
+intercept: 0.14852742426208324
+{'latency_factor': 0.07411254149003511, 'latency_exponent': 0.38806400667675184, 'eye_mvt_scaling_parameter': 0.002377572678935413, 'eye_mvt_angle_parameter': 0.8539963243897579, 'rule_firing': 0.05995633050087895}
+
+
