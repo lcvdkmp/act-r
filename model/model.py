@@ -625,7 +625,7 @@ class Model:
         def special_product(l1, l2):
             """
             Given a list l2 and a list of indices l1, yield all tuples
-            (x, y) where x is an index in l1 and y is l2[x].
+            (x, y) s.t. x is an index in l1 and y is l2[x].
             """
             for i in l1:
                 for j in range(0, len(l2[i])):
