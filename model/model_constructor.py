@@ -11,6 +11,14 @@ def format_word(w):
 
 
 def flatten(l):
+    """
+    Flatten a list or tuple of nested lists and tuples.
+    Arguments:
+        l: the list to flatten.
+
+    Returns:
+        l but flattened.
+    """
     for i in l:
         if isinstance(i, (list, tuple)):
             yield from flatten(i)
@@ -41,28 +49,25 @@ class ModelConstructor():
         self.kwargs = kwargs
         self.entries = []
         self.advanced = advanced
-        self.read_sentences(sentence_filepath, self.advanced)
+        self.read_sentences(sentence_filepath)
         self.word_rt_csv = word_rt_csv
         self.sentence_filepath = sentence_filepath
 
         # A list of filters applied to the noun csv entries in advanced mode
         self.noun_filters = []
-        # self.noun_filters = [lambda x: x["Subject_Gender"] !=
-        #                      x["Object_Gender"]]
-
-        # self.noun_filters = [lambda x: x["Subject_Gender"] == "mis" and
-        #                      x["Object_Gender"] == "match"]
 
         # A list of filters applied to the list of entries in advanced mode
         self.entry_type_filters = []
-        # self.entry_type_filters = [lambda x: x[3] == ["een", "mis", "match"] or
-        #                            x[3] == ["een", "match", "mis"]]
-        # self.entry_type_filters = [lambda x: x[3] == ["een", "mis", "match"]]
+
         el = len(self.entries)
         print("entries successfully read: {}/{}"
               .format(el, self.num_total_entries))
 
     def parse(self):
+        """
+        To be executed before any other method. Parses the data read from the
+        csv files.
+        """
         el = len(self.entries)
         skipped = None
         if el != self.num_total_entries:
@@ -73,8 +78,8 @@ class ModelConstructor():
             for f in self.entry_type_filters:
                 self.entries = filter(f, self.entries)
             self.entries = list(self.entries)
-            print("successful entries after filters {}/{}".format(len(self.entries),
-                                                             el))
+            print("successful entries after filters {}/{}".format(
+                len(self.entries), el))
 
         if self.advanced:
             self.parse_noun_rt_csv(self.word_rt_csv, skipped)
@@ -84,6 +89,11 @@ class ModelConstructor():
             print("All rt information found")
 
     def skipped_entries(self):
+        """
+        Calculate skipped entries
+        Returns:
+            A set of skipped entries
+        """
         l = set((tuple(flatten((x[4], tuple(x[3])))) for x in self.entries))
         full_set = set(product(range(1, 33), product(["geen", "een"],
                                                      product(["mis", "match"],
@@ -92,8 +102,23 @@ class ModelConstructor():
         full_set = set(map(lambda x: tuple(flatten(x)), full_set))
         return full_set - l
 
-    def read_sentences(self, fn, vc):
-        # TODO: also retrieve second sentence
+    def read_sentences(self, fn):
+        """
+        Read the sentences from a sentence file.
+        Arguments:
+            fn: the file name of the sentence file
+        Returns:
+        If in advanced mode: a tuple (wl, nl) where:
+            - wl is a list of words that form the sentence and
+            - nl is a list of nouns that are in the sentence.
+
+        Else, a tuple (wl, nl, i, t, idx) where:
+            - wl is a list of words that form the sentence,
+            - nl is a list of nouns that are in the sentence,
+            - i is the indicator word for the second noun,
+            - t is the type of the sentence, and
+            - idx is the identifier of the sentence.
+        """
         def rem_dot(wl):
             if wl[-1][-1] == ".":
                 wl[-1] = wl[-1][:-1]
@@ -109,14 +134,13 @@ class ModelConstructor():
             wl = [[format_word(w) for w in x] for x in wl]
             wl = [list(filter(None, l)) for l in wl]
             nl = list(map(str.strip, nl))
-            if not vc:
+            if not self.advanced:
                 return wl, nl
 
             sl = wl
             wl = sl[0]
             il = []
 
-            # TODO: also check second sentence
             for n in nl:
                 try:
                     ix = wl.index(n)
@@ -140,10 +164,7 @@ class ModelConstructor():
                                ' unique! Indicator: "{}"'
                                '. Skipping sentence...'
                                ).format(fn, i, indicator))
-            if self.advanced:
-                return sl, nl, indicator, t, idx
-            else:
-                return sl, nl, indicator
+            return sl, nl, indicator, t, idx
 
         self.num_total_entries = 0
         with open(fn, 'r') as f:
@@ -156,6 +177,9 @@ class ModelConstructor():
                     continue
 
     def parse_rt_csv(self, fn):
+        """
+        Parse a csv containing reading reaction times of words
+        """
         with open(fn, 'r') as f:
             sh = 0
             eh = 0
@@ -182,9 +206,15 @@ class ModelConstructor():
                 raise Warning("Not all entries have corresponding"
                               "RTs!")
 
-            # self.rts = {format_word(r['Word']): r['RT'] for r in reader}
-
     def parse_noun_rt_csv(self, fn, skipped=None):
+        """
+        Parse a csv containing reaction times of noun recalls
+
+        Arguments:
+            fn: the file name of the csv file to parse
+            skipped: A list of skipped entries. This list can be calculated by
+                     skipped_entries()
+        """
         with open(fn, 'r') as f:
             reader = csv.DictReader(f, delimiter=',')
 
@@ -209,6 +239,13 @@ class ModelConstructor():
             self.rt_list = [float(r['RT']) / 1000 for r in e]
 
     def model_generator(self, **kwargs):
+        """
+        Generator that yields models constructed from the csv and sentence
+        files.
+
+        Arguments:
+            kwargs: kwargs that are given to the models that are constructed.
+        """
         def gender(match_type, sentence):
                 match_gender = "masc" if "hij" in wl[1] else "fem"
                 mis_gender = "masc" if match_gender == "fem" else "fem"
@@ -236,6 +273,9 @@ class ModelConstructor():
                             **self.kwargs, model_params=kwargs)
 
     def rts(self):
+        """
+        Generator that yields reaction times that were read from the csv file
+        """
         if self.advanced:
             for e in self.rt_list:
                 yield e
@@ -246,6 +286,24 @@ class ModelConstructor():
                         yield f
 
     def lex_sentence(self, l):
+        """
+        Lex a sentence
+        Return:
+            If advanced mode: A tuple (s, nl, sentence_id, sentence_type), else
+            a tuple (s, nl) where:
+                - s is the sentence (a tuple of strings split on newlines),
+                - nl is a list of nouns that occur in the sentence,
+                - sentence_id is the identifier of the sentence, and
+                - sentence_type is the type of the sentence.
+
+            The type of the sentence is a tuple (quant, m0, m1) where:
+                - quant is the quantifier that is used in the sentence (either
+                  "een" or "geen"),
+                - m0 is the match type of the first noun (either "match"
+                  or "miss"), and
+                - m1 is the match type of the second noun.
+        """
+
         # Convert non-json to json.
         # These replacements only work because the js objects we parse are
         # really simple.
@@ -263,8 +321,9 @@ class ModelConstructor():
             raise Exception('The input file is of an incorrect'
                             ' shape!\nLine: "{}"'.format(l))
 
-        # XXX: Here we replace " by '. We assume any occurance of " has been caused
-        # by the regex replace used to convert javascript to json.
+        # XXX: Here we replace " by '. We assume any occurance of "
+        # has been caused # by the regex replace used to convert
+        # javascript to json.
         s = tuple(map(str.strip, o[s_i]['s'].replace('"', "'").split("\n")))
         nl = o[nl_i]['as']
 
@@ -282,9 +341,3 @@ class ModelConstructor():
             return (s, nl, sentence_id, sentence_type)
         else:
             return (s, nl)
-
-
-# mc = ModelConstructor("data/fillers.txt",
-#                       "data/results_fillers_RTs.csv", advanced=False)
-# mc2 = ModelConstructor("data/target_sentences.txt",
-#                        "data/results_fillers_RTs.csv", advanced=True)

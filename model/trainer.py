@@ -11,8 +11,6 @@ import functools
 
 from measurer import Measurer, EventMeasurer, EventIntervalMeasurer
 
-# import pandas as pd
-
 
 def run_and_log(sim, fn="output"):
     with open(fn, "w") as f:
