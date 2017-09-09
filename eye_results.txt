@@ -1,3 +1,0 @@
-'eye_mvt_log__': array(-8.814191179269775), 'eye_map_log__': array(-2.302589265832653), 'sigma_log__': array(-1.9626050557405013)
-
-'eye_mvt_log__': array(-8.835246329769447), 'eye_map_log__': array(-1.0936636593910518), 'sigma_log__': array(-1.963410426913868)

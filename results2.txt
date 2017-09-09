@@ -1,1 +1,0 @@
-'eye_mvt_scaling_parameter': 0.002377572678935413, 'eye_mvt_angle_parameter': 0.8539963243897579, 'rule_firing': 0.05995633050087895
