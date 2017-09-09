@@ -115,8 +115,8 @@ def train_args(p):
     args = parser.parse_args()
 
     if args.plot and not args.calculate_results:
-        raise Warning("-p, --plot won't do anything unless -r,"
-                      " --calculate-results is specified")
+        print("Warning: -p, --plot won't do anything unless -r,"
+              " --calculate-results is specified")
 
     return args
 
