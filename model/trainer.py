@@ -221,74 +221,9 @@ class Trainer():
         self.measurer.verbose = v
         return m + intercept
 
-    def plot_results(self, **params):
+    def plot(self, **params):
         o = self.observed_measures()
-        r = self.collect_results(params)
+        r = self.collect_results(**params)
         x = np.arange(len(o))
         plt.bar(x, (o - r))
         plt.show()
-
-
-if __name__ == "__main__":
-    model_args = {"gui": True, "subsymbolic": True}
-    # results = {'eye_mvt_scaling_parameter': 0.002377572678935413,
-    #            'eye_mvt_angle_parameter': 0.8539963243897579,
-    #            'rule_firing': 0.05995633050087895}
-
-
-
-    # basic_measurer = EventMeasurer("KEY PRESSED: SPACE", True)
-
-    # basic_trainer = Trainer("data/fillers.txt", "data/results_fillers_RTs.csv",
-    #                         basic_measurer, model_args=model_args,
-    #                         verbose=True, mode="full")
-
-    # basic_trainer.train()
-
-    # The results of the basic training
-    results = {'eye_mvt_angle_parameter': 0.8778596227717579,
-               'rule_firing': 0.05996869897845805,
-               'eye_mvt_scaling_parameter': 0.002454310962708778}
-
-    advanced_measurer = EventIntervalMeasurer(("RULE SELECTED: lexeme "
-                                               "retrieved (noun): "
-                                               "start reference retrieval"),
-                                              ("RULE FIRED: reference"
-                                               " retrieved"), True)
-
-    advanced_trainer = Trainer("data/target_sentences.txt",
-                               "data/pronouns_RTs.csv", advanced_measurer,
-                               model_args=model_args, verbose=True,
-                               default_param_values=results)
-
-    # advanced_trainer.train()
-
-    # # results of the advanced training match-mis + mis-match
-    # results = {
-    #     'latency_exponent': 0.23459438771567767,
-    #     'latency_factor': 0.07025957880534615,
-    #     'eye_mvt_angle_parameter': 0.8778596227717579,
-    #     'rule_firing': 0.05996869897845805,
-    #     'eye_mvt_scaling_parameter': 0.002454310962708778,
-    #     'intercept': 0.14036324690675073
-    # }
-
-    # results of the advanced training match-mis
-    results = {
-        'latency_factor': 0.07169216002195634,
-        'latency_exponent': 0.39318476021560095,
-        'eye_mvt_angle_parameter': 0.8778596227717579,
-        'rule_firing': 0.05996869897845805,
-        'eye_mvt_scaling_parameter': 0.002454310962708778,
-        'intercept': 0.15135767246512238
-    }
-
-    t = advanced_trainer
-
-    r = t.collect_results(**results)
-    # print(t.observed_measures())
-    print(r - t.observed_measures())
-    print("Max error of {}".format(np.max(np.abs(r - t.observed_measures()))))
-    print("Mean error of {}.".format(np.mean(np.abs(r -
-                                                    t.observed_measures()))))
-#     t.plot_results(**results)

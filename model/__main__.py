@@ -107,7 +107,18 @@ def train_args(p):
                         choices=["allow-all", "allow-mis-match"],
                         default="allow-all"),
 
-    return parser.parse_args()
+    parser.add_argument("-p", "--plot",
+                        help=("Plot differences if -r, --calculate-results"
+                              "is specified"),
+                        action="store_true")
+
+    args = parser.parse_args()
+
+    if args.plot and not args.calculate_results:
+        raise Warning("-p, --plot won't do anything unless -r,"
+                      " --calculate-results is specified")
+
+    return args
 
 
 def read_from_csv(filename):
@@ -171,6 +182,9 @@ def train_mode(parser):
             np.max(np.abs(r - t.observed_measures()))))
         print("Mean error of {}.".format(
             np.mean(np.abs(r - t.observed_measures()))))
+
+        if args.plot:
+            t.plot(**results)
     else:
         t.train()
 

@@ -4,6 +4,9 @@ import simpy
 
 
 class Measurer():
+    """
+    Base class for the Measurer implementations
+    """
 
     counter = [0, 0]
     callbacks = defaultdict(list)
@@ -24,6 +27,15 @@ class Measurer():
         self.callbacks[tuple(count)].append(callback)
 
     def measure(self, gen):
+        """
+        Measure all models provided by a generator.
+
+        Arguments:
+            gen: A Model generator.
+
+        Returns:
+            A flat np.array of measures of the models yielded by gen.
+        """
         models = list(gen)
         if self.verbose and len(models) > 0:
             print(models[0].model_params)
@@ -53,6 +65,10 @@ class Measurer():
 
 
 class EventMeasurer(Measurer):
+    """
+    A Measurer that measurer delta time between a single given event.
+    """
+
     def __init__(self, event, verbose=False):
         self.event = event
         super(Measurer, self)
@@ -92,6 +108,10 @@ class EventMeasurer(Measurer):
 
 
 class EventIntervalMeasurer(Measurer):
+    """
+    A Measurer that measured time between two given events that occur
+    subsequent of each other.
+    """
     def __init__(self, ev1, ev2, verbose=False):
         self.events = (ev1, ev2)
         super(Measurer, self)
