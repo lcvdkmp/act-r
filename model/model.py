@@ -70,8 +70,8 @@ class Model:
 
         actr.chunktype("word", "form, cat, role, status")
         actr.chunktype("noun", "form, cat, role, status, gender")
-        # actr.chunktype("read_word", "word, use, gender")
 
+        # Create decmem chunks for all words
         self.chunks = []
 
         self.chunks += [actr.makechunk(typename="word", nameofchunk=w, form=w,
@@ -90,6 +90,7 @@ class Model:
         for c in self.chunks:
             self.model.decmem.add(c)
 
+        # Create goal buffer
         actr.chunktype("goal", ("state, expecting_object,"
                                 "first_word_attended, subject_attended,"
                                 "in_second_sentence"))
@@ -158,7 +159,6 @@ class Model:
             ~visual>
             ~visual_location>
         """)
-        # ~retrieval>
 
         self.model.productionstring(name="recover from lost word 2", string="""
             =g>
@@ -174,7 +174,6 @@ class Model:
             ~visual>
             ~visual_location>
         """)
-        # ~retrieval>
 
         self.model.productionstring(name="no lexeme found", string="""
             =g >
@@ -195,6 +194,10 @@ class Model:
             self.basic_mode()
 
     def basic_mode(self):
+        """ Add rules for basic mode: the model will only model basic reading,
+        no reference retrieval is done and no grammatical information is
+        infered.
+        """
         self.model.productionstring(name="attend word", string="""
             =g>
             isa goal
@@ -258,6 +261,9 @@ class Model:
         """)
 
     def advanced_mode(self):
+        """
+        Add rules for advanced mode: the model will model the full experiment.
+        """
 
         # Attend to the object found. There is a distinction between words on
         # the first and second sentence to update the in_second_sentence state.
@@ -615,19 +621,16 @@ class Model:
             ~retrieval>
         """)
 
-    def freq(self, _):
-        return 1000
-
     def stimuli_gen(self):
+        def special_product(l1, l2):
+            """
+            Given a list l2 and a list of indices l1, yield all tuples
+            (x, y) where x is an index in l1 and y is l2[x].
+            """
+            for i in l1:
+                for j in range(0, len(l2[i])):
+                    yield (i, j)
         for s in self.sentence_pairs:
-            def special_product(l1, l2):
-                """
-                Given a list l2 and a list of indices l1, yield all tuples
-                (x, y) where x is an index in l1 and y is l2[x].
-                """
-                for i in l1:
-                    for j in range(0, len(l2[i])):
-                        yield (i, j)
 
             # Calculate the positions of the words in the first and the second
             # sentence.
@@ -655,13 +658,6 @@ class Model:
                 # The simulation requires a dictionary for some reason...
                 yield dict(enumerate(d))
 
-    def sentence_to_stimuli(self, s):
-        wl = s.split(" ")
-
-        return ([{p: self.env_word(wl, p), p+1: self.env_dash(p+1)}
-                for p in range(len(wl) - 1)] +
-                [{len(wl)-1: self.env_word(wl, len(wl)-1)}])
-
     def env_size(self):
         return max(map(lambda x: max(map(len, x)), self.sentence_pairs))
 
@@ -671,25 +667,6 @@ class Model:
         environment.
         """
         return self.TEXT_MARGIN[0] + self.TEXT_SPACING[0] * p
-
-    def env_pos(self, p):
-        pos = list(self.TEXT_MARGIN)
-        max_s = self.environment.size
-        x = ((p * self.TEXT_SPACING[0]) %
-             (max_s[0] - 2 * self.TEXT_MARGIN[0])) + pos[0]
-        y = int((p * self.TEXT_SPACING[0]) /
-                (max_s[0] - 2 * self.TEXT_MARGIN[0])) \
-            * self.TEXT_SPACING[1] + self.TEXT_MARGIN[1]
-        return (x, y)
-
-    def env_word(self, wl, p):
-        w = wl[p]
-        # Note the vis_delay. This makes the reading delay proportional to the
-        # word length
-        return {'text': w, 'position': self.env_pos(p), 'vis_delay': len(w)}
-
-    def env_dash(self, p):
-        return {'text': '___', 'position': self.env_pos(p), 'vis_delay': 3}
 
     def sim(self):
         # If gui is set to False, the simulation only runs for at most 1

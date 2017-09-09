@@ -13,6 +13,14 @@ class Measurer():
         pass
 
     def add_callback(self, count, callback):
+        """
+        Add a function that will be called on a certain measure count.
+
+        Arguments:
+            count: a tuple of the simulation number and sentence number on
+                   which callback is to be called.
+            callback: the function that should be called on count/
+        """
         self.callbacks[tuple(count)].append(callback)
 
     def measure(self, gen):
@@ -103,18 +111,11 @@ class EventIntervalMeasurer(Measurer):
 
             # Skip ev0s after first ev0 occurred since we are waiting for
             # an ev1
-            # if self.events[0] == sim.current_event.action:
-            #     print(sim.current_event.action, self.events[0])
-            #     print(times)
             if sim.current_event.action == self.events[0] and \
                     times[0] is None:
                 # print("A")
                 times[0] = sim.show_time()
                 # print(times)
-
-            # if self.events[1] == sim.current_event.action:
-            #     print(sim.current_event.action, self.events[1])
-            #     print(times)
 
             # We want to record the first occurance of a ev1 after a ev0
             if self.events[1] == sim.current_event.action and \

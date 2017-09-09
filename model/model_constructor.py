@@ -13,64 +13,77 @@ def format_word(w):
 def flatten(l):
     for i in l:
         if isinstance(i, (list, tuple)):
-                yield from flatten(i)
+            yield from flatten(i)
         else:
             yield i
 
 
 class ModelConstructor():
     def __init__(self, sentence_filepath,
-                 word_freq_csv, advanced=True,
-                 noun_mode=False, **kwargs):
+                 word_rt_csv, advanced=False,
+                 **kwargs):
+        """
+        Arguments:
+            sentence_filepath: path to the txt file containing the sentences in
+                               correct format
+            word_rt_csv: path to the csv file containing the reaction time
+                           data
+            advanced: weather or not the constructor should generate advanced
+                      models. When the ModelConstructor is in advanced mode,
+                      sentence_filepath is assumed to contain noun gender
+                      match/mismatch data and word_rt_csv is assumed to contain
+                      RTs of nouns. When ModelContructor is in non-advanced
+                      mode, sentence_filepath should contain word RT info
+                      instead.
+            kwargs: all kwargs are passed to the models constructed by the
+                    ModelConstructor.
+        """
         self.kwargs = kwargs
         self.entries = []
         self.advanced = advanced
-        self.noun_mode = noun_mode
         self.read_sentences(sentence_filepath, self.advanced)
+        self.word_rt_csv = word_rt_csv
+        self.sentence_filepath = sentence_filepath
 
-        self.noun_filters = [lambda x: x["Subject_Gender"] == "mis" and
-                             x["Object_Gender"] == "match"]
+        # A list of filters applied to the noun csv entries in advanced mode
+        self.noun_filters = []
+        # self.noun_filters = [lambda x: x["Subject_Gender"] !=
+        #                      x["Object_Gender"]]
 
-        self.entry_type_filters = [lambda x: x[3] == ["een", "mis", "match"]]
+        # self.noun_filters = [lambda x: x["Subject_Gender"] == "mis" and
+        #                      x["Object_Gender"] == "match"]
 
+        # A list of filters applied to the list of entries in advanced mode
+        self.entry_type_filters = []
+        # self.entry_type_filters = [lambda x: x[3] == ["een", "mis", "match"] or
+        #                            x[3] == ["een", "match", "mis"]]
+        # self.entry_type_filters = [lambda x: x[3] == ["een", "mis", "match"]]
         el = len(self.entries)
-        print("entries successfully parsed: {}/{}"
+        print("entries successfully read: {}/{}"
               .format(el, self.num_total_entries))
 
+    def parse(self):
+        el = len(self.entries)
         skipped = None
         if el != self.num_total_entries:
-            print("some entries were skipped, figuring out which ones")
+            print("some entries were skipped, figuring out which ones...")
             skipped = self.skipped_entries()
 
-        if noun_mode:
+        if self.advanced:
             for f in self.entry_type_filters:
                 self.entries = filter(f, self.entries)
             self.entries = list(self.entries)
-            print("successful entries filtered {}/{}".format(len(self.entries),
+            print("successful entries after filters {}/{}".format(len(self.entries),
                                                              el))
 
-        if noun_mode:
-            self.parse_noun_freq_csv(word_freq_csv, skipped)
-            print("All noun frequency information found")
+        if self.advanced:
+            self.parse_noun_rt_csv(self.word_rt_csv, skipped)
+            print("All noun rt information found")
         else:
-            self.parse_freq_csv(word_freq_csv)
-            print("All frequency information found")
+            self.parse_rt_csv(self.word_rt_csv)
+            print("All rt information found")
 
     def skipped_entries(self):
-        # index = 1
-        # same_index_count = 0
-        # for e in sorted(self.entries, key=lambda x: int(x[4])):
-            # print(e)
-            # if e[4] != index:
-            #     skipped += list(range(index, e[4]))
-            #     index = e[4]
-            #     same_index_count = 0
-            # else:
-            #     same_index_count += 1
-            #     if same_index_count == 3:
-            #         same_index_count = 0
-            #         index += 1
-
         l = set((tuple(flatten((x[4], tuple(x[3])))) for x in self.entries))
         full_set = set(product(range(1, 33), product(["geen", "een"],
                                                      product(["mis", "match"],
@@ -87,7 +100,7 @@ class ModelConstructor():
             return wl
 
         def parse_sentence(l, i):
-            if self.noun_mode:
+            if self.advanced:
                 ss, nl, idx, t = self.lex_sentence(l)
             else:
                 ss, nl = self.lex_sentence(l)
@@ -127,7 +140,7 @@ class ModelConstructor():
                                ' unique! Indicator: "{}"'
                                '. Skipping sentence...'
                                ).format(fn, i, indicator))
-            if self.noun_mode:
+            if self.advanced:
                 return sl, nl, indicator, t, idx
             else:
                 return sl, nl, indicator
@@ -142,7 +155,7 @@ class ModelConstructor():
                     print("Warning:", w)
                     continue
 
-    def parse_freq_csv(self, fn):
+    def parse_rt_csv(self, fn):
         with open(fn, 'r') as f:
             sh = 0
             eh = 0
@@ -167,11 +180,11 @@ class ModelConstructor():
                         eh += 1
             if (eh, nh, sh) != (len(self.entries), 0, 0):
                 raise Warning("Not all entries have corresponding"
-                              "frequencies!")
+                              "RTs!")
 
-            # self.freqs = {format_word(r['Word']): r['RT'] for r in reader}
+            # self.rts = {format_word(r['Word']): r['RT'] for r in reader}
 
-    def parse_noun_freq_csv(self, fn, skipped=None):
+    def parse_noun_rt_csv(self, fn, skipped=None):
         with open(fn, 'r') as f:
             reader = csv.DictReader(f, delimiter=',')
 
@@ -191,9 +204,9 @@ class ModelConstructor():
 
             if len(e) != len(self.entries):
                 print(len(e), len(self.entries))
-                raise Warning("number of found frequencies does not match"
+                raise Warning("number of found RTs does not match"
                               "number of entries!")
-            self.freq_list = [float(r['RT']) / 1000 for r in e]
+            self.rt_list = [float(r['RT']) / 1000 for r in e]
 
     def model_generator(self, **kwargs):
         def gender(match_type, sentence):
@@ -222,9 +235,9 @@ class ModelConstructor():
                             nouns=nl + bro,
                             **self.kwargs, model_params=kwargs)
 
-    def freqs(self):
-        if self.noun_mode:
-            for e in self.freq_list:
+    def rts(self):
+        if self.advanced:
+            for e in self.rt_list:
                 yield e
         else:
             for e in self.entries:
@@ -255,7 +268,7 @@ class ModelConstructor():
         s = tuple(map(str.strip, o[s_i]['s'].replace('"', "'").split("\n")))
         nl = o[nl_i]['as']
 
-        if self.noun_mode:
+        if self.advanced:
             sentence_id = o[0][1]
             sentence_type = o[0][0].split('_')[:3]
 
