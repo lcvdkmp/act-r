@@ -88,13 +88,24 @@ def run_mode(parser):
 
 def train_args(p):
     parser = argparse.ArgumentParser(parents=[p])
-    parser.add_argument("-n", "--noun-mode", help="Noun mode")
+    parser.add_argument("-n", "--noun-mode",
+                        help="Train the advanced (noun) model",
+                        metavar='BASIC_RESULTS_FILENAME')
     parser.add_argument("sentence_file", help=("The file containing the"
                                                " sentences"))
     parser.add_argument("rt_file", help=("The file containing the reaction"
                                          " times"))
 
-    parser.add_argument("-r", "--calculate-results", help="Noun mode")
+    parser.add_argument("-r", "--calculate-results",
+                        metavar="RESULTS_FILENAME",
+                        help=("Calculate results from a csv containing"
+                              " parameter values"))
+
+    parser.add_argument("-f", "--filter-mode",
+                        help=("Set the filter mode."
+                              " By default allow-all is used"),
+                        choices=["allow-all", "allow-mis-match"],
+                        default="allow-all"),
 
     return parser.parse_args()
 
@@ -136,16 +147,19 @@ def train_mode(parser):
                 advanced=bool(args.noun_mode))
 
     if args.noun_mode:
-        t.model_constructor.entry_type_filters = [lambda x: x[3] ==
-                                                  ["een", "mis", "match"] or
-                                                  x[3] ==
-                                                  ["een", "match", "mis"]]
-        # t.model_constructor.entry_type_filters = [lambda x: x[3] == ["een", "mis", "match"]]
+        if args.filter_mode == "allow-all":
+            t.model_constructor.entry_type_filters = \
+                [lambda x: x[3] == ["een", "mis", "match"] or
+                 x[3] == ["een", "match", "mis"]]
+            t.model_constructor.noun_filters = \
+                [lambda x: x["Subject_Gender"] != x["Object_Gender"]]
+        else:
+            t.model_constructor.entry_type_filters = \
+                [lambda x: x[3] == ["een", "mis", "match"]]
 
-        t.model_constructor.noun_filters = [lambda x: x["Subject_Gender"] !=
-                                            x["Object_Gender"]]
-        # t.model_constructor.noun_filters = [lambda x: x["Subject_Gender"] == "mis" and
-        #                                     x["Object_Gender"] == "match"]
+            t.model_constructor.noun_filters = \
+                [lambda x: x["Subject_Gender"] == "mis" and
+                 x["Object_Gender"] == "match"]
 
     if args.calculate_results:
         results = read_from_csv(args.calculate_results)
@@ -162,14 +176,11 @@ def train_mode(parser):
 
 
 parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("mode", help=('The mode of the program.'
-                                  ' Choose from: "run", "train"')
-                    )
+parser.add_argument("mode", help='The mode of the program.',
+                    choices=["run", "train"])
 
 args, _ = parser.parse_known_args()
 if args.mode == "train":
     train_mode(parser)
 elif args.mode == "run":
     run_mode(parser)
-else:
-    print('Illegal mode "{}", choose from: "run", "train"')
